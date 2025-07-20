@@ -20,8 +20,9 @@
 		<hibernate.version>7.0.6.Final</hibernate.version>
 		<jackson.version>2.19.1</jackson.version>
 		<spotless.version>2.45.0</spotless.version>
-		<jakarta.version>3.1.1</jakarta.version>
+		<jakarta.version>3.2.0</jakarta.version>
 		<lombok.version>1.18.38</lombok.version>
+		<flyway.version>11.10.3</flyway.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -73,6 +74,42 @@
 			<artifactId>junit-jupiter</artifactId>
 			<scope>test</scope>
 		</dependency>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-starter-data-jpa</artifactId>
+				<version>3.5.3</version>
+			</dependency>
+			<dependency>
+				<groupId>org.postgresql</groupId>
+				<artifactId>postgresql</artifactId>
+				<scope>runtime</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.flywaydb</groupId>
+				<artifactId>flyway-core</artifactId>
+				<version>${flyway.version}</version>
+			</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+			<version>${flyway.version}</version>
+		</dependency>
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>postgresql</artifactId>
+				<scope>test</scope>
+			</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>jdbc</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>jakarta.persistence</groupId>
+			<artifactId>jakarta.persistence-api</artifactId>
+			<version>${jakarta.version}</version>
+		</dependency>
+
 	</dependencies>
 	<build>
 		<plugins>

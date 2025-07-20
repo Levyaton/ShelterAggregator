@@ -8,6 +8,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 public record DogRequest(
+    @NotNull Long shelterId,
     @NotBlank String externalId,
     String shelterUrl,
     @NotBlank String name,
