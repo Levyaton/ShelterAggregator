@@ -1,18 +1,22 @@
 package cz.levy.pet.shelter.aggregator.api;
 
 import cz.levy.pet.shelter.aggregator.domain.Sex;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 public record DogRequest(
-    String externalId,
+    @NotBlank String externalId,
     String shelterUrl,
-    String name,
+    @NotBlank String name,
     String description,
     String breedGuess,
-    Sex sex,
-    Float estimatedAge,
-    Float currentWeight,
-    Float estimatedFinalWeightMin,
-    Float estimatedFinalWeightMax,
+    @NotNull Sex sex,
+    @PositiveOrZero Float estimatedAgeInYears,
+    @Positive Float currentWeight,
+    @Positive Float estimatedFinalWeightMin,
+    @Positive Float estimatedFinalWeightMax,
     String dogAddress,
     List<byte[]> images) {}
