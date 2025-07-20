@@ -10,6 +10,7 @@ import lombok.Data;
 @Data
 @Builder(setterPrefix = "with")
 public class DogRequestTestFixtureBuilder {
+  @Builder.Default private Long shelterId = 1L;
   @Builder.Default private String externalId = "some external id";
   @Builder.Default private String shelterUrl = "some url";
   @Builder.Default private String name = "some name";
@@ -25,6 +26,7 @@ public class DogRequestTestFixtureBuilder {
 
   public DogRequest toDogRequest() {
     return new DogRequest(
+        shelterId,
         externalId,
         shelterUrl,
         name,

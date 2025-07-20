@@ -18,6 +18,7 @@ public class DogSheltersController {
       new DogResponse(
           0,
           new DogRequest(
+              1L,
               "some external id",
               "some url",
               "some name",
