@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cz.levy.pet.shelter.aggregator.fixtures.CommonFixtures;
-import cz.levy.pet.shelter.aggregator.fixtures.DogRequestFixtures;
+import cz.levy.pet.shelter.aggregator.fixtures.DogRequestTestFixtureBuilder;
 import cz.levy.pet.shelter.aggregator.fixtures.DogResponseFixtures;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -30,9 +30,41 @@ public class DogSheltersControllerIntegrationTest {
         .perform(
             post("/dogs")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(DogRequestFixtures.TEST_DOG_REQUEST)))
+                .content(
+                    objectMapper.writeValueAsString(
+                        DogRequestTestFixtureBuilder.builder().build().toDogRequest())))
         .andExpect(status().isCreated())
         .andExpect(content().json(CommonFixtures.TEST_ID_STRING));
+  }
+
+  @Test
+  public void createDogWithInvalidInputReturns400() throws Exception {
+    mockMvc
+        .perform(
+            post("/dogs")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        DogRequestTestFixtureBuilder.builder()
+                            .withCurrentWeight(-10f)
+                            .build()
+                            .toDogRequest())))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  public void updateDogWithInvalidInputReturns400() throws Exception {
+    mockMvc
+        .perform(
+            put("/dogs/" + CommonFixtures.TEST_ID_STRING)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        DogRequestTestFixtureBuilder.builder()
+                            .withCurrentWeight(-10f)
+                            .build()
+                            .toDogRequest())))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
@@ -41,7 +73,9 @@ public class DogSheltersControllerIntegrationTest {
         .perform(
             put("/dogs/" + CommonFixtures.TEST_ID_STRING)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(DogRequestFixtures.TEST_DOG_REQUEST)))
+                .content(
+                    objectMapper.writeValueAsString(
+                        DogRequestTestFixtureBuilder.builder().build().toDogRequest())))
         .andExpect(status().isNoContent());
   }
 

@@ -4,11 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import cz.levy.pet.shelter.aggregator.api.DogRequest;
 import cz.levy.pet.shelter.aggregator.api.DogResponse;
 import cz.levy.pet.shelter.aggregator.domain.Sex;
+import jakarta.validation.Valid;
 import java.util.Collections;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -32,13 +32,13 @@ public class DogSheltersController {
               Collections.emptyList()));
 
   @PostMapping()
-  public ResponseEntity<Long> createDog(@Validated @RequestBody DogRequest dog) {
+  public ResponseEntity<Long> createDog(@Valid @RequestBody DogRequest dog) {
     return ResponseEntity.status(HttpStatus.CREATED).body(stubbedResponse.internalId());
   }
 
   @PutMapping("/{internalId}")
   public ResponseEntity<Void> updateDog(
-      @PathVariable long internalId, @Validated @RequestBody DogRequest dog) {
+      @PathVariable long internalId, @Valid @RequestBody DogRequest dog) {
     return ResponseEntity.noContent().build();
   }
 
