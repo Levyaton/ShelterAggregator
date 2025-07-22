@@ -19,7 +19,8 @@ public class ShelterEntity {
   @Column private String phoneNumber;
   @Column private String url;
   @Column private String email;
-
+  @Column private boolean isNonProfit;
+  @Column private String bankAccountNumber;
   @OneToMany(mappedBy = "shelter", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<DogEntity> dogs = new HashSet<>();
 }
