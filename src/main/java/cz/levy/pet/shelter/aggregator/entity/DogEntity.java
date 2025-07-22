@@ -3,10 +3,14 @@ package cz.levy.pet.shelter.aggregator.entity;
 import cz.levy.pet.shelter.aggregator.domain.Sex;
 import jakarta.persistence.*;
 import jakarta.persistence.Entity;
-import lombok.Data;
+import lombok.*;
 
 @Data
 @Entity
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class DogEntity {
 
   @Id

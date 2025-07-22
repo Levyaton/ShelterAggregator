@@ -1,9 +1,10 @@
 package cz.levy.pet.shelter.aggregator.fixtures;
 
 import cz.levy.pet.shelter.aggregator.api.DogResponse;
+import cz.levy.pet.shelter.aggregator.fixtures.builders.DogRequestTestFixtureBuilder;
 
 public class DogResponseFixtures {
   public static final DogResponse TEST_DOG_RESPONSE_RECORD =
       new DogResponse(
-          CommonFixtures.TEST_ID, DogRequestTestFixtureBuilder.builder().build().toDogRequest());
+          CommonFixtures.TEST_ID, DogRequestTestFixtureBuilder.builder().build().toDogRequest(1L));
 }

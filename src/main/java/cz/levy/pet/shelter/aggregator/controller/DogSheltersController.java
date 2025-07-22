@@ -1,12 +1,16 @@
 package cz.levy.pet.shelter.aggregator.controller;
 
+import static cz.levy.pet.shelter.aggregator.mapper.DogMapper.requestToDto;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import cz.levy.pet.shelter.aggregator.api.DogRequest;
 import cz.levy.pet.shelter.aggregator.api.DogResponse;
 import cz.levy.pet.shelter.aggregator.domain.Sex;
+import cz.levy.pet.shelter.aggregator.service.DogSheltersService;
 import jakarta.validation.Valid;
 import java.util.Collections;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +18,13 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/dogs")
 public class DogSheltersController {
+
+  private final DogSheltersService dogSheltersService;
+
+  public DogSheltersController(DogSheltersService dogSheltersService) {
+    this.dogSheltersService = dogSheltersService;
+  }
+
   private static final DogResponse stubbedResponse =
       new DogResponse(
           0,
@@ -34,7 +45,8 @@ public class DogSheltersController {
 
   @PostMapping()
   public ResponseEntity<Long> createDog(@Valid @RequestBody DogRequest dog) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(stubbedResponse.internalId());
+    var dogEntity = dogSheltersService.saveDog(requestToDto(dog));
+    return ResponseEntity.status(HttpStatus.CREATED).body(dogEntity.getId());
   }
 
   @PutMapping("/{internalId}")
