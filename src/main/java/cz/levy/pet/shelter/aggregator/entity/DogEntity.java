@@ -26,7 +26,7 @@ public class DogEntity {
   @Column private String breedGuess;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "sex", nullable = false, columnDefinition = "sex_enum")
+  @Column(nullable = false)
   private Sex sex;
 
   @Column private Float estimatedAgeInYears;
