@@ -1,5 +1,6 @@
 package cz.levy.pet.shelter.aggregator.error;
 
+import java.util.NoSuchElementException;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.http.HttpStatus;
@@ -34,10 +35,31 @@ public class RestErrorHandler {
             + fieldError.getDefaultMessage());
   }
 
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+    return createErrorResponseEntity(HttpStatus.BAD_REQUEST, ex.getMessage());
+  }
+
+  @ExceptionHandler(NoSuchElementException.class)
+  public ResponseEntity<ErrorResponse> handleNotFound(NoSuchElementException ex) {
+    return createErrorResponseEntity(HttpStatus.NOT_FOUND, ex.getMessage());
+  }
+
+  @ExceptionHandler(DuplicateResourceException.class)
+  public ResponseEntity<ErrorResponse> handleDuplicateResource(DuplicateResourceException ex) {
+    return createErrorResponseEntity(HttpStatus.CONFLICT, ex.getMessage());
+  }
+
   private ResponseEntity<ErrorResponse> createErrorResponseEntity(
       HttpStatus status, String detail) {
     return ResponseEntity.status(status)
         .contentType(MediaType.APPLICATION_JSON)
         .body(new ErrorResponse(status.name(), detail));
+  }
+
+  public static class DuplicateResourceException extends RuntimeException {
+    public DuplicateResourceException(String message) {
+      super(message);
+    }
   }
 }
