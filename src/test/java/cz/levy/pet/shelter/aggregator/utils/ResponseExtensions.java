@@ -39,7 +39,8 @@ public class ResponseExtensions {
   @SuppressWarnings("unchecked")
   public static <T> ValidatableMockMvcResponse assertThatResponseEqualsRecursive(
       ValidatableMockMvcResponse resp, List<T> expected, String... ignoredFields) {
-    var response = resp.extract().as(new TypeRef<List<T>>() {});
+    var response =
+        resp.contentType(MediaType.APPLICATION_JSON_VALUE).extract().as(new TypeRef<List<T>>() {});
     if (!expected.isEmpty()) {
       var typeClass = expected.getFirst().getClass();
       response = (List<T>) resp.extract().jsonPath().getList(".", typeClass);

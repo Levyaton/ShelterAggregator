@@ -3,6 +3,7 @@ package cz.levy.pet.shelter.aggregator.e2e;
 import static cz.levy.pet.shelter.aggregator.utils.ResponseExtensions.performRequest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import cz.levy.pet.shelter.aggregator.error.RestErrorHandler;
 import cz.levy.pet.shelter.aggregator.fixtures.CommonFixtures;
 import cz.levy.pet.shelter.aggregator.fixtures.DogRequestTestFixtureBuilder;
 import cz.levy.pet.shelter.aggregator.fixtures.DogResponseFixtures;
@@ -48,20 +49,27 @@ public class DogEntitySheltersControllerIntegrationTest {
     var badRequest =
         DogRequestTestFixtureBuilder.builder().withCurrentWeight(-10f).build().toDogRequest();
 
-    performRequest(badRequest, HttpStatus.BAD_REQUEST, Method.POST, "/dogs");
+    performRequest(badRequest, HttpStatus.BAD_REQUEST, Method.POST, "/dogs")
+        .assertThatResponseEqualsRecursive(
+            new RestErrorHandler.ErrorResponse(
+                HttpStatus.BAD_REQUEST.name(),
+                "Invalid request parameters: dog.currentWeight must be greater than 0"));
   }
 
   @Test
   public void updateDogWithInvalidInputReturns400() {
     var badRequest =
-        DogRequestTestFixtureBuilder.builder().withCurrentWeight(-10f).build().toDogRequest();
+        DogRequestTestFixtureBuilder.builder().withSex(null).build().toDogRequest();
 
     performRequest(
         badRequest,
         HttpStatus.BAD_REQUEST,
         Method.PUT,
         "/dogs/{internalId}",
-        CommonFixtures.TEST_ID_STRING);
+        CommonFixtures.TEST_ID_STRING).assertThatResponseEqualsRecursive(
+            new RestErrorHandler.ErrorResponse(
+                    HttpStatus.BAD_REQUEST.name(),
+                    "Invalid request parameters: dog.sex must not be null"));
   }
 
   @Test
