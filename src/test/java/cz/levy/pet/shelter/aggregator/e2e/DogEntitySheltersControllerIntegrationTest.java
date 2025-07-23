@@ -73,28 +73,27 @@ public class DogEntitySheltersControllerIntegrationTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("invalidCreateDogCases")
-  public void createDogWithInvalidInputReturnsAppropriateError(
-      InvalidCreateDogCase invalidCreateDogCase) {
+  public void createDogWithInvalidInputReturnsAppropriateError(InvalidCreateDogCase caseData) {
     ShelterEntity savedShelter = null;
-    if (invalidCreateDogCase.useSavedShelter) {
+    if (caseData.useSavedShelter) {
       savedShelter = prepareSavedShelterEntity();
     }
 
-    if (invalidCreateDogCase.useSavedDog) {
+    if (caseData.useSavedDog) {
       prepareSavedDogEntity(savedShelter);
     }
 
     var shelterId = savedShelter != null ? savedShelter.getId() : CommonFixtures.TEST_ID;
-    var invalidDogRequest = invalidCreateDogCase.dogRequestBuilder.toDogRequest(shelterId);
+    var invalidDogRequest = caseData.dogRequestBuilder.toDogRequest(shelterId);
     var expectedErrorMessage =
-        invalidCreateDogCase
+        caseData
             .expectedErrorMessage
             .replace("{externalId}", String.valueOf(invalidDogRequest.getExternalId()))
             .replace("{shelterId}", String.valueOf(shelterId));
-    performRequest(invalidDogRequest, invalidCreateDogCase.expectedStatus, Method.POST, "/dogs")
+    performRequest(invalidDogRequest, caseData.expectedStatus, Method.POST, "/dogs")
         .assertThatResponseEqualsRecursive(
             new RestErrorHandler.ErrorResponse(
-                invalidCreateDogCase.expectedStatus.name(), expectedErrorMessage));
+                caseData.expectedStatus.name(), expectedErrorMessage));
   }
 
   @Test
@@ -110,12 +109,11 @@ public class DogEntitySheltersControllerIntegrationTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("invalidUpdateDogCases")
-  public void updateDogWithInvalidInputReturnsAppropriateError(
-      InvalidCreateDogCase invalidCreateDogCase) {
+  public void updateDogWithInvalidInputReturnsAppropriateError(InvalidCreateDogCase caseData) {
     ShelterEntity savedShelter = prepareSavedShelterEntity();
     DogEntity savedDog = null;
 
-    if (invalidCreateDogCase.useSavedDog) {
+    if (caseData.useSavedDog) {
       savedDog = prepareSavedDogEntity(savedShelter);
     }
 
@@ -123,20 +121,20 @@ public class DogEntitySheltersControllerIntegrationTest {
     var internalDogId = savedDog != null ? savedDog.getId() : CommonFixtures.TEST_ID;
 
     var expectedErrorMessage =
-        invalidCreateDogCase
+        caseData
             .expectedErrorMessage
             .replace("{internalId}", String.valueOf(internalDogId))
             .replace("{shelterId}", String.valueOf(shelterId));
 
     performRequest(
-            invalidCreateDogCase.dogRequestBuilder.toDogRequest(shelterId),
-            invalidCreateDogCase.expectedStatus,
+            caseData.dogRequestBuilder.toDogRequest(shelterId),
+            caseData.expectedStatus,
             Method.PUT,
             "/dogs/{internalId}",
             internalDogId)
         .assertThatResponseEqualsRecursive(
             new RestErrorHandler.ErrorResponse(
-                invalidCreateDogCase.expectedStatus.name(), expectedErrorMessage));
+                caseData.expectedStatus.name(), expectedErrorMessage));
   }
 
   @Test

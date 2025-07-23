@@ -4,9 +4,8 @@ import org.assertj.core.api.Assertions;
 
 public class TestUtils {
 
-  public static <T> void assertThatEqualsRecursive(
-      T response, T expected, String... ignoredFields) {
-    Assertions.assertThat(response)
+  public static <T> void assertThatEqualsRecursive(T actual, T expected, String... ignoredFields) {
+    Assertions.assertThat(actual)
         .usingRecursiveComparison()
         .ignoringFields(ignoredFields)
         .isEqualTo(expected);
