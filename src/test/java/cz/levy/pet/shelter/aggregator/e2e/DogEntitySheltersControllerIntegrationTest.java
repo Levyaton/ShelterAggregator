@@ -81,11 +81,14 @@ public class DogEntitySheltersControllerIntegrationTest {
       prepareSavedDogEntity(savedShelter);
     }
 
-    var shelterId = savedShelter != null ? savedShelter.getId() : 1L;
+    var shelterId = savedShelter != null ? savedShelter.getId() : CommonFixtures.TEST_ID;
+    var invalidDogRequest =  invalidCreateDogCase.dogRequestBuilder.toDogRequest(shelterId);
     var expectedErrorMessage =
-        invalidCreateDogCase.expectedErrorMessage.replace("{id}", String.valueOf(shelterId));
+            invalidCreateDogCase.expectedErrorMessage
+                    .replace("{externalId}", String.valueOf(invalidDogRequest.getExternalId()))
+                    .replace("{shelterId}", String.valueOf(shelterId));
     performRequest(
-            invalidCreateDogCase.dogRequestBuilder.toDogRequest(shelterId),
+            invalidDogRequest,
             invalidCreateDogCase.expectedStatus,
             Method.POST,
             "/dogs")
@@ -97,7 +100,7 @@ public class DogEntitySheltersControllerIntegrationTest {
   @Test
   public void updateDogUpdatesADogEntityInDogRepositoryAndReturnsStatusCode200() {
     var savedShelter = prepareSavedShelterEntity();
-
+    var savedDog = prepareSavedDogEntity(savedShelter);
     var validRequest =
         DogRequestTestFixtureBuilder.builder().build().toDogRequest(savedShelter.getId());
 
@@ -105,24 +108,40 @@ public class DogEntitySheltersControllerIntegrationTest {
         validRequest,
         HttpStatus.NO_CONTENT,
         Method.PUT,
-        "/dogs/{internalId}",
-        CommonFixtures.TEST_ID_STRING);
+        "/dogs/{internalId}", savedDog.getId());
   }
 
-  @Test
-  public void updateDogWithInvalidInputReturnsAppropriateError() {
-    var badRequest = DogRequestTestFixtureBuilder.builder().withSex(null).build().toDogRequest(1L);
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidUpdateDogCases")
+  public void updateDogWithInvalidInputReturnsAppropriateError(InvalidCreateDogCase invalidCreateDogCase) {
+    ShelterEntity savedShelter = prepareSavedShelterEntity();
+    DogEntity savedDog = null;
+
+    if (invalidCreateDogCase.useSavedDog) {
+      savedDog = prepareSavedDogEntity(savedShelter);
+    }
+
+    var shelterId = savedShelter.getId();
+    var internalDogId =
+        savedDog != null ? savedDog.getId() : CommonFixtures.TEST_ID;
+
+    var expectedErrorMessage =
+            invalidCreateDogCase.expectedErrorMessage
+                    .replace("{internalId}", String.valueOf(internalDogId))
+                    .replace("{shelterId}", String.valueOf(shelterId));
 
     performRequest(
-            badRequest,
-            HttpStatus.BAD_REQUEST,
+            invalidCreateDogCase.dogRequestBuilder.toDogRequest(shelterId),
+            invalidCreateDogCase.expectedStatus,
             Method.PUT,
             "/dogs/{internalId}",
-            CommonFixtures.TEST_ID_STRING)
+            internalDogId)
             .assertThatResponseEqualsRecursive(
                     new RestErrorHandler.ErrorResponse(
-                            HttpStatus.BAD_REQUEST.name(),
-                            "Invalid request parameters: dog.sex must not be null"));
+                            invalidCreateDogCase.expectedStatus.name(),
+                            expectedErrorMessage
+                    ));
+
   }
 
   @Test
@@ -167,22 +186,44 @@ public class DogEntitySheltersControllerIntegrationTest {
             .expectedErrorMessage(
                 "Invalid request parameters: dog.currentWeight must be greater than 0")
             .expectedStatus(HttpStatus.BAD_REQUEST)
+            .useSavedDog(false)
             .build(),
         InvalidCreateDogCase.builder()
             .caseName("Unknown shelter id")
             .dogRequestBuilder(DogRequestTestFixtureBuilder.builder().build())
             .expectedStatus(HttpStatus.NOT_FOUND)
-            .expectedErrorMessage("Shelter not found with id: 1")
+            .expectedErrorMessage("Shelter not found with id: {shelterId}")
             .useSavedShelter(false)
+            .useSavedDog(false)
             .build(),
         InvalidCreateDogCase.builder()
             .caseName("Duplicate dog entered")
             .dogRequestBuilder(DogRequestTestFixtureBuilder.builder().build())
             .expectedStatus(HttpStatus.CONFLICT)
             .expectedErrorMessage(
-                "Dog already exists with externalId: some external id and shelterId: {id}")
+                "Dog already exists with externalId: {externalId} and shelterId: {shelterId}")
             .useSavedDog(true)
             .build());
+  }
+
+  private static Stream<InvalidCreateDogCase> invalidUpdateDogCases() {
+    return Stream.of(
+            InvalidCreateDogCase.builder()
+                    .caseName("Invalid request body")
+                    .dogRequestBuilder(
+                            DogRequestTestFixtureBuilder.builder().withSex(null).build())
+                    .expectedErrorMessage(
+                            "Invalid request parameters: dog.sex must not be null")
+                    .expectedStatus(HttpStatus.BAD_REQUEST)
+                    .useSavedDog(true)
+                    .build(),
+            InvalidCreateDogCase.builder()
+                    .caseName("Dog Not Found")
+                    .dogRequestBuilder(DogRequestTestFixtureBuilder.builder().build())
+                    .expectedStatus(HttpStatus.NOT_FOUND)
+                    .expectedErrorMessage("Dog not found with id: {internalId}")
+                    .useSavedDog(false)
+                    .build());
   }
 
   @Data
@@ -193,7 +234,7 @@ public class DogEntitySheltersControllerIntegrationTest {
     private final HttpStatus expectedStatus;
     private final String expectedErrorMessage;
     @Builder.Default private final boolean useSavedShelter = true;
-    @Builder.Default private final boolean useSavedDog = false;
+    private final boolean useSavedDog;
 
     @Override
     public String toString() {
