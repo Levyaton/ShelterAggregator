@@ -71,7 +71,7 @@ public class DogEntitySheltersControllerIntegrationTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("invalidCreateDogCases")
-  public void createDogWithInvalidInputReturns400(InvalidCreateDogCase invalidCreateDogCase) {
+  public void createDogWithInvalidInputReturnsAppropriateError(InvalidCreateDogCase invalidCreateDogCase) {
     ShelterEntity savedShelter = null;
     if (invalidCreateDogCase.useSavedShelter) {
       savedShelter = prepareSavedShelterEntity();
@@ -95,22 +95,6 @@ public class DogEntitySheltersControllerIntegrationTest {
   }
 
   @Test
-  public void updateDogWithInvalidInputReturns400() {
-    var badRequest = DogRequestTestFixtureBuilder.builder().withSex(null).build().toDogRequest(1L);
-
-    performRequest(
-            badRequest,
-            HttpStatus.BAD_REQUEST,
-            Method.PUT,
-            "/dogs/{internalId}",
-            CommonFixtures.TEST_ID_STRING)
-        .assertThatResponseEqualsRecursive(
-            new RestErrorHandler.ErrorResponse(
-                HttpStatus.BAD_REQUEST.name(),
-                "Invalid request parameters: dog.sex must not be null"));
-  }
-
-  @Test
   public void updateDogUpdatesADogEntityInDogRepositoryAndReturnsStatusCode200() {
     var savedShelter = prepareSavedShelterEntity();
 
@@ -123,6 +107,22 @@ public class DogEntitySheltersControllerIntegrationTest {
         Method.PUT,
         "/dogs/{internalId}",
         CommonFixtures.TEST_ID_STRING);
+  }
+
+  @Test
+  public void updateDogWithInvalidInputReturnsAppropriateError() {
+    var badRequest = DogRequestTestFixtureBuilder.builder().withSex(null).build().toDogRequest(1L);
+
+    performRequest(
+            badRequest,
+            HttpStatus.BAD_REQUEST,
+            Method.PUT,
+            "/dogs/{internalId}",
+            CommonFixtures.TEST_ID_STRING)
+            .assertThatResponseEqualsRecursive(
+                    new RestErrorHandler.ErrorResponse(
+                            HttpStatus.BAD_REQUEST.name(),
+                            "Invalid request parameters: dog.sex must not be null"));
   }
 
   @Test
