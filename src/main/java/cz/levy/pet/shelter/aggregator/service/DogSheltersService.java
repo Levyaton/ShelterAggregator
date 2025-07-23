@@ -1,5 +1,6 @@
 package cz.levy.pet.shelter.aggregator.service;
 
+import cz.levy.pet.shelter.aggregator.api.DogResponse;
 import cz.levy.pet.shelter.aggregator.dto.DogDto;
 import cz.levy.pet.shelter.aggregator.entity.DogEntity;
 import cz.levy.pet.shelter.aggregator.entity.ShelterEntity;
@@ -8,6 +9,8 @@ import cz.levy.pet.shelter.aggregator.mapper.DogMapper;
 import cz.levy.pet.shelter.aggregator.repository.DogRepository;
 import cz.levy.pet.shelter.aggregator.repository.ShelterRepository;
 import java.util.NoSuchElementException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -49,6 +52,15 @@ public class DogSheltersService {
   public DogDto getDogDto(long internalId) {
     DogEntity dogEntity = getDogByInternalId(internalId);
     return DogMapper.entityToDto(dogEntity);
+  }
+
+  public Page<DogResponse> getAllDogs(Pageable pageable) {
+    Page<DogEntity> dogEntities = dogRepository.findAll(pageable);
+    return dogEntities.map(
+        (dogEntity) -> {
+          var dogDto = DogMapper.entityToDto(dogEntity);
+          return DogMapper.dtoToResponse(dogDto, dogEntity.getId());
+        });
   }
 
   private void validateDogDoesNotExist(DogDto dogDto) {
