@@ -3,6 +3,8 @@ package cz.levy.pet.shelter.aggregator.entity;
 import cz.levy.pet.shelter.aggregator.domain.Sex;
 import jakarta.persistence.*;
 import jakarta.persistence.Entity;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.*;
 
 @Data
@@ -46,4 +48,9 @@ public class DogEntity {
   @ManyToOne(optional = false)
   @JoinColumn(name = "shelter_id", nullable = false)
   private ShelterEntity shelter;
+
+  @ElementCollection
+  @CollectionTable(name = "dog_image_urls", joinColumns = @JoinColumn(name = "dog_id"))
+  @Column(name = "image_url", length = 2048)
+  private List<String> imageUrls = new ArrayList<>();
 }

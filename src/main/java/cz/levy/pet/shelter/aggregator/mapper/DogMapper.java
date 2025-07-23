@@ -21,6 +21,7 @@ public class DogMapper {
         .estimatedFinalWeightMin(dogRequest.getEstimatedFinalWeightMin())
         .estimatedFinalWeightMax(dogRequest.getEstimatedFinalWeightMax())
         .dogAddress(dogRequest.getDogAddress())
+        .imageUrls(dogRequest.getImageUrls())
         .build();
   }
 
@@ -38,6 +39,7 @@ public class DogMapper {
         .estimatedFinalWeightMax(dogDto.getEstimatedFinalWeightMax())
         .dogAddress(dogDto.getDogAddress())
         .shelter(shelter)
+        .imageUrls(dogDto.getImageUrls())
         .build();
   }
 
@@ -55,6 +57,7 @@ public class DogMapper {
         .estimatedFinalWeightMax(dogEntity.getEstimatedFinalWeightMax())
         .dogAddress(dogEntity.getDogAddress())
         .shelterId(dogEntity.getShelter().getId())
+        .imageUrls(dogEntity.getImageUrls())
         .build();
   }
 
@@ -73,6 +76,7 @@ public class DogMapper {
             .estimatedFinalWeightMax(dogDto.getEstimatedFinalWeightMax())
             .dogAddress(dogDto.getDogAddress())
             .shelterId(dogDto.getShelterId())
+            .imageUrls(dogDto.getImageUrls())
             .build();
 
     return new DogResponse(internalId, dogRequest);

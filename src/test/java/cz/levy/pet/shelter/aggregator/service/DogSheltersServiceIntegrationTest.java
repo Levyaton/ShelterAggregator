@@ -56,7 +56,7 @@ public class DogSheltersServiceIntegrationTest {
                 .estimatedFinalWeightMax(8F)
                 .shelter(testShelter)
                 .build());
-var dog2MediumMidF =
+    var dog2MediumMidF =
         dogRepository.save(
             DogEntity.builder()
                 .externalId("dog2")
@@ -69,7 +69,7 @@ var dog2MediumMidF =
                 .shelter(testShelter)
                 .build());
 
-var dog3LargeOldM  =
+    var dog3LargeOldM =
         dogRepository.save(
             DogEntity.builder()
                 .externalId("dog3")
@@ -81,7 +81,7 @@ var dog3LargeOldM  =
                 .estimatedFinalWeightMax(30F)
                 .shelter(testShelter)
                 .build());
-var dog4SmallSeniorF =
+    var dog4SmallSeniorF =
         dogRepository.save(
             DogEntity.builder()
                 .externalId("dog4")
@@ -93,7 +93,7 @@ var dog4SmallSeniorF =
                 .estimatedFinalWeightMax(5F)
                 .shelter(testShelter)
                 .build());
-var dog5MediumMidF  =
+    var dog5MediumMidF =
         dogRepository.save(
             DogEntity.builder()
                 .externalId("dog5")
@@ -106,7 +106,7 @@ var dog5MediumMidF  =
                 .shelter(testShelter)
                 .build());
 
-var dog6SmallNoAgeM  =
+    var dog6SmallNoAgeM =
         dogRepository.save(
             DogEntity.builder()
                 .externalId("dog6")
@@ -118,7 +118,7 @@ var dog6SmallNoAgeM  =
                 .estimatedFinalWeightMax(10F)
                 .shelter(testShelter)
                 .build());
-var dog7NoDataF  =
+    var dog7NoDataF =
         dogRepository.save(
             DogEntity.builder()
                 .externalId("dog7")

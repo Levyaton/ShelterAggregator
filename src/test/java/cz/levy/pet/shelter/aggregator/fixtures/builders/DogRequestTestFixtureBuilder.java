@@ -20,7 +20,7 @@ public class DogRequestTestFixtureBuilder {
   @Builder.Default private Float estimatedFinalWeightMin = 10F;
   @Builder.Default private Float estimatedFinalWeightMax = 10F;
   @Builder.Default private String dogAddress = null;
-  @Builder.Default private List<byte[]> images = null; // TODO Implement image handling
+  @Builder.Default private List<String> imageUrls = List.of("some-image.jpg");
 
   public DogRequest toDogRequest(Long shelterId) {
     return new DogRequest(
@@ -36,6 +36,6 @@ public class DogRequestTestFixtureBuilder {
         estimatedFinalWeightMin,
         estimatedFinalWeightMax,
         dogAddress,
-        images);
+        imageUrls);
   }
 }
