@@ -1,0 +1,52 @@
+name: CI Orchestrator
+
+on:
+  workflow_run:
+    workflows:
+      - 'Commit Message Lint'
+      - 'Spotless Check'
+      - 'Run Tests'
+      - 'Build'
+    types: [completed]
+
+jobs:
+  dispatch-next:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine next step
+        id: pick
+        run: |
+          WFN="${{ github.event.workflow_run.workflow_name }}"
+          CON="${{ github.event.workflow_run.conclusion }}"
+          if [[ "$CON" != "success" ]]; then
+            echo "Upstream '$WFN' failed; skipping dispatch."
+            exit 0
+          fi
+
+          case "$WFN" in
+            "Commit Message Lint")
+              echo "event=spotless_dispatch" >> $GITHUB_OUTPUT
+              ;;
+            "Spotless Check")
+              echo "event=tests_dispatch"    >> $GITHUB_OUTPUT
+              ;;
+            "Run Tests")
+              echo "event=build_dispatch"    >> $GITHUB_OUTPUT
+              ;;
+            "Build")
+              echo "event=release_dispatch"  >> $GITHUB_OUTPUT
+              ;;
+            *)
+              exit 0
+              ;;
+          esac
+
+      - name: Fire repository_dispatch
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          event-type: ${{ steps.pick.outputs.event }}
+          client-payload: |
+            branch: ${{ github.event.workflow_run.head_branch }}
+            pr:     ${{ github.event.workflow_run.pull_requests[0].number || '' }}
