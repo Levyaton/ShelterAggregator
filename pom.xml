@@ -11,7 +11,7 @@
 	</parent>
 	<groupId>cz.levy</groupId>
 	<artifactId>pet.shelter.aggregator</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.1.0</version>
 	<name>pet.shelter.aggregator</name>
 	<description>Pet shelter aggregator for the Czech Republic</description>
 	<properties>
