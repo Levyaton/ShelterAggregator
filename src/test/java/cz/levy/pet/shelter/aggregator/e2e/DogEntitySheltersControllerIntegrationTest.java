@@ -71,7 +71,8 @@ public class DogEntitySheltersControllerIntegrationTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("invalidCreateDogCases")
-  public void createDogWithInvalidInputReturnsAppropriateError(InvalidCreateDogCase invalidCreateDogCase) {
+  public void createDogWithInvalidInputReturnsAppropriateError(
+      InvalidCreateDogCase invalidCreateDogCase) {
     ShelterEntity savedShelter = null;
     if (invalidCreateDogCase.useSavedShelter) {
       savedShelter = prepareSavedShelterEntity();
@@ -82,16 +83,13 @@ public class DogEntitySheltersControllerIntegrationTest {
     }
 
     var shelterId = savedShelter != null ? savedShelter.getId() : CommonFixtures.TEST_ID;
-    var invalidDogRequest =  invalidCreateDogCase.dogRequestBuilder.toDogRequest(shelterId);
+    var invalidDogRequest = invalidCreateDogCase.dogRequestBuilder.toDogRequest(shelterId);
     var expectedErrorMessage =
-            invalidCreateDogCase.expectedErrorMessage
-                    .replace("{externalId}", String.valueOf(invalidDogRequest.getExternalId()))
-                    .replace("{shelterId}", String.valueOf(shelterId));
-    performRequest(
-            invalidDogRequest,
-            invalidCreateDogCase.expectedStatus,
-            Method.POST,
-            "/dogs")
+        invalidCreateDogCase
+            .expectedErrorMessage
+            .replace("{externalId}", String.valueOf(invalidDogRequest.getExternalId()))
+            .replace("{shelterId}", String.valueOf(shelterId));
+    performRequest(invalidDogRequest, invalidCreateDogCase.expectedStatus, Method.POST, "/dogs")
         .assertThatResponseEqualsRecursive(
             new RestErrorHandler.ErrorResponse(
                 invalidCreateDogCase.expectedStatus.name(), expectedErrorMessage));
@@ -105,15 +103,13 @@ public class DogEntitySheltersControllerIntegrationTest {
         DogRequestTestFixtureBuilder.builder().build().toDogRequest(savedShelter.getId());
 
     performRequest(
-        validRequest,
-        HttpStatus.NO_CONTENT,
-        Method.PUT,
-        "/dogs/{internalId}", savedDog.getId());
+        validRequest, HttpStatus.NO_CONTENT, Method.PUT, "/dogs/{internalId}", savedDog.getId());
   }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("invalidUpdateDogCases")
-  public void updateDogWithInvalidInputReturnsAppropriateError(InvalidCreateDogCase invalidCreateDogCase) {
+  public void updateDogWithInvalidInputReturnsAppropriateError(
+      InvalidCreateDogCase invalidCreateDogCase) {
     ShelterEntity savedShelter = prepareSavedShelterEntity();
     DogEntity savedDog = null;
 
@@ -122,13 +118,13 @@ public class DogEntitySheltersControllerIntegrationTest {
     }
 
     var shelterId = savedShelter.getId();
-    var internalDogId =
-        savedDog != null ? savedDog.getId() : CommonFixtures.TEST_ID;
+    var internalDogId = savedDog != null ? savedDog.getId() : CommonFixtures.TEST_ID;
 
     var expectedErrorMessage =
-            invalidCreateDogCase.expectedErrorMessage
-                    .replace("{internalId}", String.valueOf(internalDogId))
-                    .replace("{shelterId}", String.valueOf(shelterId));
+        invalidCreateDogCase
+            .expectedErrorMessage
+            .replace("{internalId}", String.valueOf(internalDogId))
+            .replace("{shelterId}", String.valueOf(shelterId));
 
     performRequest(
             invalidCreateDogCase.dogRequestBuilder.toDogRequest(shelterId),
@@ -136,22 +132,20 @@ public class DogEntitySheltersControllerIntegrationTest {
             Method.PUT,
             "/dogs/{internalId}",
             internalDogId)
-            .assertThatResponseEqualsRecursive(
-                    new RestErrorHandler.ErrorResponse(
-                            invalidCreateDogCase.expectedStatus.name(),
-                            expectedErrorMessage
-                    ));
-
+        .assertThatResponseEqualsRecursive(
+            new RestErrorHandler.ErrorResponse(
+                invalidCreateDogCase.expectedStatus.name(), expectedErrorMessage));
   }
 
   @Test
   public void deleteDogDeletesADogEntityFromDogRepositoryAndReturnsStatusCode200() {
+    var savedShelter = prepareSavedShelterEntity();
+    var savedDog = prepareSavedDogEntity(savedShelter);
+
     performRequest(
-        null,
-        HttpStatus.NO_CONTENT,
-        Method.DELETE,
-        "/dogs/{internalId}",
-        CommonFixtures.TEST_ID_STRING);
+        null, HttpStatus.NO_CONTENT, Method.DELETE, "/dogs/{internalId}", savedDog.getId());
+
+    assertThat(dogRepository.findById(savedDog.getId())).isEmpty();
   }
 
   @Test
@@ -208,22 +202,20 @@ public class DogEntitySheltersControllerIntegrationTest {
 
   private static Stream<InvalidCreateDogCase> invalidUpdateDogCases() {
     return Stream.of(
-            InvalidCreateDogCase.builder()
-                    .caseName("Invalid request body")
-                    .dogRequestBuilder(
-                            DogRequestTestFixtureBuilder.builder().withSex(null).build())
-                    .expectedErrorMessage(
-                            "Invalid request parameters: dog.sex must not be null")
-                    .expectedStatus(HttpStatus.BAD_REQUEST)
-                    .useSavedDog(true)
-                    .build(),
-            InvalidCreateDogCase.builder()
-                    .caseName("Dog Not Found")
-                    .dogRequestBuilder(DogRequestTestFixtureBuilder.builder().build())
-                    .expectedStatus(HttpStatus.NOT_FOUND)
-                    .expectedErrorMessage("Dog not found with id: {internalId}")
-                    .useSavedDog(false)
-                    .build());
+        InvalidCreateDogCase.builder()
+            .caseName("Invalid request body")
+            .dogRequestBuilder(DogRequestTestFixtureBuilder.builder().withSex(null).build())
+            .expectedErrorMessage("Invalid request parameters: dog.sex must not be null")
+            .expectedStatus(HttpStatus.BAD_REQUEST)
+            .useSavedDog(true)
+            .build(),
+        InvalidCreateDogCase.builder()
+            .caseName("Dog Not Found")
+            .dogRequestBuilder(DogRequestTestFixtureBuilder.builder().build())
+            .expectedStatus(HttpStatus.NOT_FOUND)
+            .expectedErrorMessage("Dog not found with id: {internalId}")
+            .useSavedDog(false)
+            .build());
   }
 
   @Data
