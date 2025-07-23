@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 public class DogSheltersService {
   private final DogRepository dogRepository;
   private final ShelterRepository shelterRepository;
+
   public DogSheltersService(DogRepository dogRepository, ShelterRepository shelterRepository) {
     this.dogRepository = dogRepository;
     this.shelterRepository = shelterRepository;
@@ -40,24 +41,30 @@ public class DogSheltersService {
     dogRepository.save(updatedDogEntity);
   }
 
+  public void deleteDog(long internalId) {
+    DogEntity dogEntity = getDogByInternalId(internalId);
+    dogRepository.delete(dogEntity);
+  }
 
   private void validateDogDoesNotExist(DogDto dogDto) {
     if (dogExists(dogDto.getExternalId(), dogDto.getShelterId())) {
       throw new RestErrorHandler.DuplicateResourceException(
-              "Dog already exists with externalId: "
-                      + dogDto.getExternalId()
-                      + " and shelterId: "
-                      + dogDto.getShelterId());
+          "Dog already exists with externalId: "
+              + dogDto.getExternalId()
+              + " and shelterId: "
+              + dogDto.getShelterId());
     }
   }
 
   private DogEntity getDogByInternalId(long internalId) {
-   return dogRepository.findById(internalId).orElseThrow(() -> new NoSuchElementException("Dog not found with id: " + internalId));
+    return dogRepository
+        .findById(internalId)
+        .orElseThrow(() -> new NoSuchElementException("Dog not found with id: " + internalId));
   }
 
   private ShelterEntity getShelterById(long shelterId) {
     return shelterRepository
         .findById(shelterId)
-            .orElseThrow(() -> new NoSuchElementException("Shelter not found with id: " + shelterId));
+        .orElseThrow(() -> new NoSuchElementException("Shelter not found with id: " + shelterId));
   }
 }

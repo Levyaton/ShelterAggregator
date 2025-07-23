@@ -57,6 +57,7 @@ public class DogSheltersController {
 
   @DeleteMapping("/{internalId}")
   public ResponseEntity<Void> deleteDog(@PathVariable long internalId) {
+    dogSheltersService.deleteDog(internalId);
     return ResponseEntity.noContent().build();
   }
 
