@@ -1,0 +1,93 @@
+name: “Prepare Release PR”
+
+on:
+  push:
+    branches:
+      - main
+  repository_dispatch:
+    types: [release_dispatch]
+jobs:
+  bump-and-pr:
+    name: Bump version & Open PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get the merge commit message
+        id: get_msg
+        run: |
+          # the tip of main is the merge commit
+          MSG=$(git log -1 --pretty=%B)
+          echo "commit_msg<<EOF" >> $GITHUB_OUTPUT
+          echo "$MSG" >> $GITHUB_OUTPUT
+          echo "EOF"  >> $GITHUB_OUTPUT
+
+      - name: Skip if not feat/fix
+        if: |
+          ${{ !(
+            contains(steps.get_msg.outputs.commit_msg, 'feat:')
+            || contains(steps.get_msg.outputs.commit_msg, 'fix:')
+          ) }}
+        run: |
+          echo "No feat: or fix: found in merge commit; exiting."
+          exit 0
+
+      - name: Set up JDK 24
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 24
+
+      - name: Read current version
+        id: current
+        run: |
+          VER=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "current_version=$VER" >> $GITHUB_OUTPUT
+
+      - name: Bump version
+        id: bump
+        run: |
+          IFS='.' read -r MAJ MIN PATCH <<< "${{ steps.current.outputs.current_version }}"
+
+          if echo "${{ steps.get_msg.outputs.commit_msg }}" | grep -q '^feat:'; then
+            # bump minor
+            NEW="$MAJ.$((MIN+1)).0"
+          else
+            # bump patch
+            NEW="$MAJ.$MIN.$((PATCH+1))"
+          fi
+
+          echo "new_version=$NEW" >> $GITHUB_OUTPUT
+
+      - name: Apply Maven version:set
+        run: |
+          mvn versions:set -DnewVersion=${{ steps.bump.outputs.new_version }} versions:commit
+
+      - name: Create release branch & push
+        run: |
+          BRANCH="release-${{ steps.bump.outputs.new_version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b $BRANCH
+          git commit -am "chore(release): bump version to ${{ steps.bump.outputs.new_version }}"
+          git push --set-upstream origin $BRANCH
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: release-${{ steps.bump.outputs.new_version }}
+          title:  "chore(release): prepare v${{ steps.bump.outputs.new_version }}"
+          body: |
+            This PR was generated automatically by GitHub Actions based on a merge commit containing
+            **`feat:`** or **`fix:`**.  
+            Please review, merge, and then the tag for v${{ steps.bump.outputs.new_version }} will follow.
+
+          labels: |
+            automated release

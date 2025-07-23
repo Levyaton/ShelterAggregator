@@ -1,0 +1,44 @@
+name: Commit Message Lint
+
+on:
+  pull_request:
+  repository_dispatch:
+    types: [commit_lint_dispatch]
+
+jobs:
+  commit-message-lint:
+    name: Validate commit messages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Fetch base commit
+        run: git fetch origin ${{ github.event.pull_request.base.sha }}
+
+      - name: Validate commit messages
+        run: |
+          echo "→ Checking all commits in this PR…"
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          INVALID=0
+
+          for commit in $(git rev-list $BASE_SHA..HEAD); do
+            MESSAGE=$(git log -1 --pretty=format:%s $commit)
+            if ! echo "$MESSAGE" \
+              | grep -Eq '^(feat|fix|test|chore|docs|style|refactor|perf|ci|build)(\(TG-[0-9]+\))?: [A-Z].+'; then
+              echo "::error ::Commit $commit does not follow the Conventional‑Commits pattern:"
+              echo "   » $MESSAGE"
+              INVALID=1
+            else
+              echo "✔ $commit: $MESSAGE"
+            fi
+          done
+
+          if [ $INVALID -ne 0 ]; then
+            echo "✖ One or more commits failed linting. See errors above."
+            exit 1
+          fi
