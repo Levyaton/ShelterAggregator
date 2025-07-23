@@ -4,12 +4,16 @@ import static cz.levy.pet.shelter.aggregator.mapper.DogMapper.requestToDto;
 
 import cz.levy.pet.shelter.aggregator.api.DogRequest;
 import cz.levy.pet.shelter.aggregator.api.DogResponse;
+import cz.levy.pet.shelter.aggregator.domain.DogSize;
+import cz.levy.pet.shelter.aggregator.domain.Sex;
+import cz.levy.pet.shelter.aggregator.domain.SortField;
 import cz.levy.pet.shelter.aggregator.mapper.DogMapper;
 import cz.levy.pet.shelter.aggregator.service.DogSheltersService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -51,8 +55,21 @@ public class DogSheltersController {
 
   @GetMapping()
   public ResponseEntity<List<DogResponse>> getAllDogs(
-      @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "100") int size) {
-    var dogResponses = dogSheltersService.getAllDogs(PageRequest.of(page, size, Sort.by("id")));
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "100") int size,
+      @RequestParam(defaultValue = "ID") SortField sort,
+      @RequestParam(defaultValue = "ASC") Direction order,
+      @RequestParam(required = false) Float ageMin,
+      @RequestParam(required = false) Float ageMax,
+      @RequestParam(required = false) Sex sex,
+      @RequestParam(required = false) DogSize dogSize) {
+    var dogResponses =
+        dogSheltersService.getAllDogs(
+            PageRequest.of(page, size, Sort.by(order, sort.getFieldName())),
+            ageMin,
+            ageMax,
+            sex,
+            dogSize);
     return ResponseEntity.ok(dogResponses.stream().toList());
   }
 }
