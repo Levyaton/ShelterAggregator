@@ -2,7 +2,6 @@ package cz.levy.pet.shelter.aggregator.fixtures.builders;
 
 import cz.levy.pet.shelter.aggregator.api.DogRequest;
 import cz.levy.pet.shelter.aggregator.domain.Sex;
-import java.util.Collections;
 import java.util.List;
 import lombok.Builder;
 import lombok.Data;
@@ -21,7 +20,7 @@ public class DogRequestTestFixtureBuilder {
   @Builder.Default private Float estimatedFinalWeightMin = 10F;
   @Builder.Default private Float estimatedFinalWeightMax = 10F;
   @Builder.Default private String dogAddress = null;
-  @Builder.Default private List<byte[]> images = Collections.emptyList();
+  @Builder.Default private List<byte[]> images = null; // TODO Implement image handling
 
   public DogRequest toDogRequest(Long shelterId) {
     return new DogRequest(

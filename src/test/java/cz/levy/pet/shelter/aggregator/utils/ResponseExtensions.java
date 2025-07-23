@@ -10,6 +10,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 
 public class ResponseExtensions {
+
+  public static ValidatableMockMvcResponse performGetRequest(
+      HttpStatus expectedStatus, String url, Object... pathParams) {
+    return performRequest(null, expectedStatus, Method.GET, url, pathParams);
+  }
+
   public static <T> ValidatableMockMvcResponse performRequest(
       T requestBody, HttpStatus expectedStatus, Method method, String url, Object... pathParams) {
 

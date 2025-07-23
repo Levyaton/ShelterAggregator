@@ -1,17 +1,19 @@
 package cz.levy.pet.shelter.aggregator.e2e;
 
+import static cz.levy.pet.shelter.aggregator.utils.ResponseExtensions.performGetRequest;
 import static cz.levy.pet.shelter.aggregator.utils.ResponseExtensions.performRequest;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import cz.levy.pet.shelter.aggregator.api.DogResponse;
 import cz.levy.pet.shelter.aggregator.config.TestContainerConfig;
 import cz.levy.pet.shelter.aggregator.entity.DogEntity;
 import cz.levy.pet.shelter.aggregator.entity.ShelterEntity;
 import cz.levy.pet.shelter.aggregator.error.RestErrorHandler;
 import cz.levy.pet.shelter.aggregator.fixtures.CommonFixtures;
-import cz.levy.pet.shelter.aggregator.fixtures.DogResponseFixtures;
 import cz.levy.pet.shelter.aggregator.fixtures.builders.DogEntityTestFixtureBuilder;
 import cz.levy.pet.shelter.aggregator.fixtures.builders.DogRequestTestFixtureBuilder;
+import cz.levy.pet.shelter.aggregator.fixtures.builders.DogResponseTestFixtureBuilder;
 import cz.levy.pet.shelter.aggregator.fixtures.builders.ShelterEntityTestFixtureBuilder;
 import cz.levy.pet.shelter.aggregator.repository.DogRepository;
 import cz.levy.pet.shelter.aggregator.repository.ShelterRepository;
@@ -150,15 +152,29 @@ public class DogEntitySheltersControllerIntegrationTest {
 
   @Test
   public void getOneDogReturnsADogWithTheSpecifiedIdWithStatusCode200() {
-    performRequest(
-            null, HttpStatus.OK, Method.GET, "/dogs/{internalId}", CommonFixtures.TEST_ID_STRING)
-        .assertThatResponseEqualsRecursive(DogResponseFixtures.TEST_DOG_RESPONSE_RECORD);
+    var savedShelter = prepareSavedShelterEntity();
+    var savedDog = prepareSavedDogEntity(savedShelter);
+
+    DogResponse expectedResponse =
+        DogResponseTestFixtureBuilder.builder()
+            .withInternalId(savedDog.getId())
+            .withDogRequest(
+                DogRequestTestFixtureBuilder.builder().build().toDogRequest(savedShelter.getId()))
+            .build()
+            .toDogResponse();
+
+    performGetRequest(HttpStatus.OK, "/dogs/{internalId}", savedDog.getId())
+        .assertThatResponseEqualsRecursive(expectedResponse);
   }
 
   @Test
   public void getAllDogsReturnsAllDogsWithStatusCode200() {
+    var savedShelter = prepareSavedShelterEntity();
+    var savedDog = prepareSavedDogEntity(savedShelter);
+
     performRequest(null, HttpStatus.OK, Method.GET, "/dogs")
-        .assertThatResponseEqualsRecursive(List.of(DogResponseFixtures.TEST_DOG_RESPONSE_RECORD));
+        .assertThatResponseEqualsRecursive(
+            List.of(DogResponseTestFixtureBuilder.builder().build().toDogResponse()));
   }
 
   private ShelterEntity prepareSavedShelterEntity() {

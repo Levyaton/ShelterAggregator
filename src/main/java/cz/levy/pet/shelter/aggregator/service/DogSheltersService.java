@@ -46,6 +46,11 @@ public class DogSheltersService {
     dogRepository.delete(dogEntity);
   }
 
+  public DogDto getDogDto(long internalId) {
+    DogEntity dogEntity = getDogByInternalId(internalId);
+    return DogMapper.entityToDto(dogEntity);
+  }
+
   private void validateDogDoesNotExist(DogDto dogDto) {
     if (dogExists(dogDto.getExternalId(), dogDto.getShelterId())) {
       throw new RestErrorHandler.DuplicateResourceException(

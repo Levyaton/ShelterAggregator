@@ -1,6 +1,7 @@
 package cz.levy.pet.shelter.aggregator.mapper;
 
 import cz.levy.pet.shelter.aggregator.api.DogRequest;
+import cz.levy.pet.shelter.aggregator.api.DogResponse;
 import cz.levy.pet.shelter.aggregator.dto.DogDto;
 import cz.levy.pet.shelter.aggregator.entity.DogEntity;
 import cz.levy.pet.shelter.aggregator.entity.ShelterEntity;
@@ -38,5 +39,42 @@ public class DogMapper {
         .dogAddress(dogDto.getDogAddress())
         .shelter(shelter)
         .build();
+  }
+
+  public static DogDto entityToDto(DogEntity dogEntity) {
+    return DogDto.builder()
+        .externalId(dogEntity.getExternalId())
+        .shelterUrl(dogEntity.getShelterUrl())
+        .name(dogEntity.getName())
+        .description(dogEntity.getDescription())
+        .breedGuess(dogEntity.getBreedGuess())
+        .sex(dogEntity.getSex())
+        .estimatedAgeInYears(dogEntity.getEstimatedAgeInYears())
+        .currentWeight(dogEntity.getCurrentWeight())
+        .estimatedFinalWeightMin(dogEntity.getEstimatedFinalWeightMin())
+        .estimatedFinalWeightMax(dogEntity.getEstimatedFinalWeightMax())
+        .dogAddress(dogEntity.getDogAddress())
+        .shelterId(dogEntity.getShelter().getId())
+        .build();
+  }
+
+  public static DogResponse dtoToResponse(DogDto dogDto, long internalId) {
+    var dogRequest =
+        DogRequest.builder()
+            .externalId(dogDto.getExternalId())
+            .shelterUrl(dogDto.getShelterUrl())
+            .name(dogDto.getName())
+            .description(dogDto.getDescription())
+            .breedGuess(dogDto.getBreedGuess())
+            .sex(dogDto.getSex())
+            .estimatedAgeInYears(dogDto.getEstimatedAgeInYears())
+            .currentWeight(dogDto.getCurrentWeight())
+            .estimatedFinalWeightMin(dogDto.getEstimatedFinalWeightMin())
+            .estimatedFinalWeightMax(dogDto.getEstimatedFinalWeightMax())
+            .dogAddress(dogDto.getDogAddress())
+            .shelterId(dogDto.getShelterId())
+            .build();
+
+    return new DogResponse(internalId, dogRequest);
   }
 }
