@@ -55,8 +55,8 @@ public class DogEntitySheltersControllerIntegrationTest {
   @BeforeEach
   void setup() {
     RestAssuredMockMvc.mockMvc(mockMvc);
-    shelterRepository.deleteAll();
     dogRepository.deleteAll();
+    shelterRepository.deleteAll();
   }
 
   @Test
@@ -170,11 +170,37 @@ public class DogEntitySheltersControllerIntegrationTest {
   @Test
   public void getAllDogsReturnsAllDogsWithStatusCode200() {
     var savedShelter = prepareSavedShelterEntity();
-    var savedDog = prepareSavedDogEntity(savedShelter);
+    var savedDog1 = prepareSavedDogEntity(savedShelter);
+    var savedDog2 =
+        prepareSavedDogEntity(
+            savedShelter,
+            DogEntityTestFixtureBuilder.builder()
+                .withExternalId("some other external id")
+                .build()
+                .toDogEntity(savedShelter));
+
+    var expectedResponse =
+        List.of(
+            DogResponseTestFixtureBuilder.builder()
+                .withInternalId(savedDog1.getId())
+                .withDogRequest(
+                    DogRequestTestFixtureBuilder.builder()
+                        .build()
+                        .toDogRequest(savedShelter.getId()))
+                .build()
+                .toDogResponse(),
+            DogResponseTestFixtureBuilder.builder()
+                .withInternalId(savedDog2.getId())
+                .withDogRequest(
+                    DogRequestTestFixtureBuilder.builder()
+                        .withExternalId("some other external id")
+                        .build()
+                        .toDogRequest(savedShelter.getId()))
+                .build()
+                .toDogResponse());
 
     performRequest(null, HttpStatus.OK, Method.GET, "/dogs")
-        .assertThatResponseEqualsRecursive(
-            List.of(DogResponseTestFixtureBuilder.builder().build().toDogResponse()));
+        .assertThatResponseEqualsRecursive(expectedResponse);
   }
 
   private ShelterEntity prepareSavedShelterEntity() {
@@ -183,8 +209,12 @@ public class DogEntitySheltersControllerIntegrationTest {
   }
 
   private DogEntity prepareSavedDogEntity(ShelterEntity savedShelter) {
-    var dog = DogEntityTestFixtureBuilder.builder().build().toDogEntity(savedShelter);
-    return dogRepository.save(dog);
+    return prepareSavedDogEntity(
+        savedShelter, DogEntityTestFixtureBuilder.builder().build().toDogEntity(savedShelter));
+  }
+
+  private DogEntity prepareSavedDogEntity(ShelterEntity savedShelter, DogEntity dogEntity) {
+    return dogRepository.save(dogEntity);
   }
 
   private static Stream<InvalidCreateDogCase> invalidCreateDogCases() {

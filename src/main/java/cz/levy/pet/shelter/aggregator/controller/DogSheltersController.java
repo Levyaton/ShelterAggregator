@@ -4,11 +4,12 @@ import static cz.levy.pet.shelter.aggregator.mapper.DogMapper.requestToDto;
 
 import cz.levy.pet.shelter.aggregator.api.DogRequest;
 import cz.levy.pet.shelter.aggregator.api.DogResponse;
-import cz.levy.pet.shelter.aggregator.domain.Sex;
 import cz.levy.pet.shelter.aggregator.mapper.DogMapper;
 import cz.levy.pet.shelter.aggregator.service.DogSheltersService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,24 +23,6 @@ public class DogSheltersController {
   public DogSheltersController(DogSheltersService dogSheltersService) {
     this.dogSheltersService = dogSheltersService;
   }
-
-  private static final DogResponse stubbedResponse =
-      new DogResponse(
-          0,
-          new DogRequest(
-              0L,
-              "some external id",
-              "some url",
-              "some name",
-              "some description",
-              null,
-              Sex.MALE,
-              13F,
-              10F,
-              10F,
-              10F,
-              null,
-              null));
 
   @PostMapping()
   public ResponseEntity<Long> createDog(@Valid @RequestBody DogRequest dog) {
@@ -67,7 +50,9 @@ public class DogSheltersController {
   }
 
   @GetMapping()
-  public ResponseEntity<List<DogResponse>> getAllDogs() {
-    return ResponseEntity.ok(List.of(stubbedResponse));
+  public ResponseEntity<List<DogResponse>> getAllDogs(
+      @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "100") int size) {
+    var dogResponses = dogSheltersService.getAllDogs(PageRequest.of(page, size, Sort.by("id")));
+    return ResponseEntity.ok(dogResponses.stream().toList());
   }
 }
