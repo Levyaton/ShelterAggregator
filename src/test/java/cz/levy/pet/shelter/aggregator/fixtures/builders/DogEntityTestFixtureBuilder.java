@@ -3,6 +3,7 @@ package cz.levy.pet.shelter.aggregator.fixtures.builders;
 import cz.levy.pet.shelter.aggregator.domain.Sex;
 import cz.levy.pet.shelter.aggregator.entity.DogEntity;
 import cz.levy.pet.shelter.aggregator.entity.ShelterEntity;
+import java.util.List;
 import lombok.Builder;
 import lombok.Data;
 
@@ -20,6 +21,7 @@ public class DogEntityTestFixtureBuilder {
   @Builder.Default private Float estimatedFinalWeightMin = 10F;
   @Builder.Default private Float estimatedFinalWeightMax = 10F;
   @Builder.Default private String dogAddress = null;
+  @Builder.Default private List<String> imageUrls = List.of("some-image.jpg");
 
   public DogEntity toDogEntity(ShelterEntity shelter) {
     return DogEntity.builder()
@@ -35,6 +37,7 @@ public class DogEntityTestFixtureBuilder {
         .estimatedFinalWeightMax(estimatedFinalWeightMax)
         .dogAddress(dogAddress)
         .shelter(shelter)
+        .imageUrls(imageUrls)
         .build();
   }
 }

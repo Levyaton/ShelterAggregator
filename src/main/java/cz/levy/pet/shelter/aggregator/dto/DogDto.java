@@ -24,5 +24,5 @@ public class DogDto {
   Float estimatedFinalWeightMin;
   Float estimatedFinalWeightMax;
   String dogAddress;
-  List<byte[]> images;
+  List<String> imageUrls;
 }

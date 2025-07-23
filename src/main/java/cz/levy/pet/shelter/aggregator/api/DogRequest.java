@@ -26,5 +26,5 @@ public class DogRequest {
   @Positive Float estimatedFinalWeightMin;
   @Positive Float estimatedFinalWeightMax;
   String dogAddress;
-  List<byte[]> images;
+  List<String> imageUrls;
 }
