@@ -10,7 +10,6 @@ import cz.levy.pet.shelter.aggregator.service.DogSheltersService;
 import jakarta.validation.Valid;
 import java.util.Collections;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -52,11 +51,12 @@ public class DogSheltersController {
   @PutMapping("/{internalId}")
   public ResponseEntity<Void> updateDog(
       @PathVariable long internalId, @Valid @RequestBody DogRequest dog) {
+    dogSheltersService.updateDog(internalId, requestToDto(dog));
     return ResponseEntity.noContent().build();
   }
 
   @DeleteMapping("/{internalId}")
-  public ResponseEntity<String> deleteDog(@PathVariable long internalId) {
+  public ResponseEntity<Void> deleteDog(@PathVariable long internalId) {
     return ResponseEntity.noContent().build();
   }
 
