@@ -2,13 +2,12 @@ package cz.levy.pet.shelter.aggregator.controller;
 
 import static cz.levy.pet.shelter.aggregator.mapper.DogMapper.requestToDto;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import cz.levy.pet.shelter.aggregator.api.DogRequest;
 import cz.levy.pet.shelter.aggregator.api.DogResponse;
 import cz.levy.pet.shelter.aggregator.domain.Sex;
+import cz.levy.pet.shelter.aggregator.mapper.DogMapper;
 import cz.levy.pet.shelter.aggregator.service.DogSheltersService;
 import jakarta.validation.Valid;
-import java.util.Collections;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +27,7 @@ public class DogSheltersController {
       new DogResponse(
           0,
           new DogRequest(
-              1L,
+              0L,
               "some external id",
               "some url",
               "some name",
@@ -40,7 +39,7 @@ public class DogSheltersController {
               10F,
               10F,
               null,
-              Collections.emptyList()));
+              null));
 
   @PostMapping()
   public ResponseEntity<Long> createDog(@Valid @RequestBody DogRequest dog) {
@@ -62,13 +61,13 @@ public class DogSheltersController {
   }
 
   @GetMapping("/{internalId}")
-  public ResponseEntity<DogResponse> getOneDog(@PathVariable long internalId)
-      throws JsonProcessingException {
-    return ResponseEntity.ok(stubbedResponse);
+  public ResponseEntity<DogResponse> getOneDog(@PathVariable long internalId) {
+    var dogDto = dogSheltersService.getDogDto(internalId);
+    return ResponseEntity.ok(DogMapper.dtoToResponse(dogDto, internalId));
   }
 
   @GetMapping()
-  public ResponseEntity<List<DogResponse>> getAllDogs() throws JsonProcessingException {
+  public ResponseEntity<List<DogResponse>> getAllDogs() {
     return ResponseEntity.ok(List.of(stubbedResponse));
   }
 }
