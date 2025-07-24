@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Adoptuj.me</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #7d8690; overflow: hidden; }
+        .font-bold { color: lightyellow; }
+        .snake-row {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            height: 10rem;
+        }
+        .row-content {
+            display: flex;
+            white-space: nowrap;
+        }
+        img { transition: transform 0.2s ease; }
+        img:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen">
+
+<h1 class="text-3xl font-bold mb-8">Adoptuj mě, prosím!</h1>
+
+<div id="snake" class="flex flex-col gap-6 w-full max-w-screen">
+    <div id="row-top" class="snake-row"><div class="row-content"></div></div>
+    <div id="row-middle" class="snake-row"><div class="row-content"></div></div>
+    <div id="row-bottom" class="snake-row"><div class="row-content"></div></div>
+</div>
+
+<script>
+    const placeholderImg = "/images/default.jpg";
+    const imagesPerRow = 8;
+    const offScreenImages = 3;
+    const windowSize = imagesPerRow + offScreenImages;
+    const rowSpeed = 1;
+    const marginTotal = 16; // mx-2 => 8px each side
+
+    const rows = [
+        { id: "row-top", direction: -1, pos: 0, contentEl: null },
+        { id: "row-middle", direction: 1, pos: 0, contentEl: null },
+        { id: "row-bottom", direction: -1, pos: 0, contentEl: null }
+    ];
+
+    let queue = [];
+    let preparedStack = [];
+
+    async function fetchImages(count) {
+        const imgs = [];
+        for (let i = 0; i < count; i++) {
+            imgs.push(`${placeholderImg}?v=${Date.now()}-${Math.random()}`);
+        }
+        return imgs;
+    }
+
+    async function init() {
+        const totalQueue = windowSize * rows.length;
+        const initialLoad = totalQueue + 30;
+        const images = await fetchImages(initialLoad);
+        queue = images.slice(0, totalQueue);
+        preparedStack = images.slice(totalQueue);
+
+        rows.forEach(r => {
+            const rowEl = document.getElementById(r.id);
+            r.contentEl = rowEl.querySelector('.row-content');
+        });
+        fillRows();
+        requestAnimationFrame(animate);
+    }
+
+    function createDog(src, alt) {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = alt;
+        img.className = "h-40 w-auto mx-2 rounded-lg shadow-lg";
+        return img;
+    }
+
+    function fillRows() {
+        rows.forEach((r, idx) => {
+            const content = r.contentEl;
+            content.innerHTML = '';
+            const start = idx * windowSize;
+            for (let i = 0; i < windowSize; i++) {
+                content.appendChild(createDog(queue[start + i], `Dog ${start + i}`));
+            }
+            r.pos = 0;
+            content.style.transform = 'translateX(0)';
+        });
+    }
+
+    function getNextFromStack() {
+        if (preparedStack.length <= 10) {
+            fetchImages(30).then(more => preparedStack.push(...more));
+        }
+        return preparedStack.pop();
+    }
+
+    function animate() {
+        rows.forEach(r => {
+            const content = r.contentEl;
+            r.pos += r.direction * rowSpeed;
+            content.style.transform = `translateX(${r.pos}px)`;
+
+            const imgs = content.children;
+            if (!imgs.length) return;
+            const first = imgs[0];
+            const last = imgs[imgs.length - 1];
+
+            if (r.direction < 0) {
+                // move left
+                if (first.getBoundingClientRect().right < 0) {
+                    // cycle first to end
+                    content.appendChild(first);
+                    // adjust position back
+                    r.pos += first.offsetWidth + marginTotal;
+                    content.style.transform = `translateX(${r.pos}px)`;
+
+                    if (r.id === 'row-bottom') {
+                        // update src and queue
+                        const next = getNextFromStack();
+                        first.src = next;
+                        queue.shift();
+                        queue.push(next);
+                    }
+                }
+            } else {
+                // move right
+                if (last.getBoundingClientRect().left > content.parentElement.clientWidth) {
+                    content.insertBefore(last, first);
+                    r.pos -= last.offsetWidth + marginTotal;
+                    content.style.transform = `translateX(${r.pos}px)`;
+                }
+            }
+        });
+        requestAnimationFrame(animate);
+    }
+
+    // Start up
+    init();
+</script>
+</body>
+</html>

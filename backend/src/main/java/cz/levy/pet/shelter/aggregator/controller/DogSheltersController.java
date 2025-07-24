@@ -63,7 +63,7 @@ public class DogSheltersController {
       @RequestParam(required = false) Float ageMax,
       @RequestParam(required = false) Sex sex,
       @RequestParam(required = false) DogSize dogSize,
-      @RequestParam(required = false) Boolean randomise) {
+      @RequestParam(required = false, defaultValue = "false") boolean randomise) {
     if (randomise) return ResponseEntity.ok(dogSheltersService.getRandomDogs(size));
 
     var dogResponses =
