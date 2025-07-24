@@ -83,6 +83,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: release-${{ steps.bump.outputs.new_version }}
+          base: main
           title:  "chore(release): prepare v${{ steps.bump.outputs.new_version }}"
           body: |
             This PR was generated automatically by GitHub Actions based on a merge commit containing
