@@ -62,7 +62,10 @@ public class DogSheltersController {
       @RequestParam(required = false) Float ageMin,
       @RequestParam(required = false) Float ageMax,
       @RequestParam(required = false) Sex sex,
-      @RequestParam(required = false) DogSize dogSize) {
+      @RequestParam(required = false) DogSize dogSize,
+      @RequestParam(required = false) Boolean randomise) {
+    if (randomise) return ResponseEntity.ok(dogSheltersService.getRandomDogs(size));
+
     var dogResponses =
         dogSheltersService.getAllDogs(
             PageRequest.of(page, size, Sort.by(order, sort.getFieldName())),
@@ -70,6 +73,6 @@ public class DogSheltersController {
             ageMax,
             sex,
             dogSize);
-    return ResponseEntity.ok(dogResponses.stream().toList());
+    return ResponseEntity.ok(dogResponses);
   }
 }

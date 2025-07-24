@@ -11,7 +11,11 @@ import cz.levy.pet.shelter.aggregator.mapper.DogMapper;
 import cz.levy.pet.shelter.aggregator.repository.DogRepository;
 import cz.levy.pet.shelter.aggregator.repository.ShelterRepository;
 import cz.levy.pet.shelter.aggregator.spec.DogSpec;
+import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.IntStream;
+import org.apache.commons.math3.distribution.EnumeratedDistribution;
+import org.apache.commons.math3.util.Pair;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -58,21 +62,32 @@ public class DogSheltersService {
     return DogMapper.entityToDto(dogEntity);
   }
 
-  public Page<DogResponse> getAllDogs(
+  public List<DogResponse> getAllDogs(
       Pageable pageable, Float ageMin, Float ageMax, Sex sex, DogSize size) {
     Page<DogEntity> dogEntities = paginateAndFilterDogs(pageable, ageMin, ageMax, sex, size);
 
-    return dogEntities.map(
-        (dogEntity) -> {
-          var dogDto = DogMapper.entityToDto(dogEntity);
-          return DogMapper.dtoToResponse(dogDto, dogEntity.getId());
-        });
+    return dogEntitiesToResponses(dogEntities.toList());
   }
 
   Page<DogEntity> paginateAndFilterDogs(
       Pageable pageable, Float ageMin, Float ageMax, Sex sex, DogSize size) {
     var spec = buildDogSpecification(ageMin, ageMax, sex, size);
     return dogRepository.findAll(spec, pageable);
+  }
+
+  public List<DogResponse> getRandomDogs(int listSize) {
+    var randomDogs = RandomnessWeight.getRandomWeightedSelection(dogRepository.findAll(), listSize);
+    return dogEntitiesToResponses(randomDogs);
+  }
+
+  private List<DogResponse> dogEntitiesToResponses(List<DogEntity> dogEntities) {
+    return dogEntities.stream()
+        .map(
+            dogEntity -> {
+              var dogDto = DogMapper.entityToDto(dogEntity);
+              return DogMapper.dtoToResponse(dogDto, dogEntity.getId());
+            })
+        .toList();
   }
 
   private Specification<DogEntity> buildDogSpecification(
@@ -114,5 +129,35 @@ public class DogSheltersService {
     return shelterRepository
         .findById(shelterId)
         .orElseThrow(() -> new NoSuchElementException("Shelter not found with id: " + shelterId));
+  }
+
+  static class RandomnessWeight {
+    private static final double MAX_BONUS_PERCENT = 0.02;
+    private static final int MAX_POINTS = 24;
+
+    public static List<DogEntity> getRandomWeightedSelection(List<DogEntity> dogs, int size) {
+      var weightedDogs = dogs.stream().map(dog -> Pair.create(dog, computeWeight(dog))).toList();
+      EnumeratedDistribution<DogEntity> distribution = new EnumeratedDistribution<>(weightedDogs);
+
+      return IntStream.range(0, size)
+          .takeWhile(_ -> !distribution.getPmf().isEmpty())
+          .mapToObj(_ -> distribution.sample())
+          .toList();
+    }
+
+    private static double computeWeight(DogEntity dog) {
+      int points = 0;
+      if (dog.getDescription() == null) points += 5;
+      if (dog.getBreedGuess() == null) points += 6;
+      if (dog.getEstimatedAgeInYears() == null) points += 4;
+      if (dog.getCurrentWeight() == null) points += 2;
+      if (dog.getEstimatedFinalWeightMin() == null) points += 1;
+      if (dog.getEstimatedFinalWeightMax() == null) points += 2;
+      if (dog.getDogAddress() == null) points += 1;
+      if (dog.getImageUrls() == null || dog.getImageUrls().size() <= 2) points += 3;
+
+      double bonus = (points / (double) MAX_POINTS) * MAX_BONUS_PERCENT;
+      return 1.0 + bonus;
+    }
   }
 }
