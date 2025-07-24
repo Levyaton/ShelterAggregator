@@ -1,10 +1,16 @@
 package cz.levy.pet.shelter.aggregator.config;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zaxxer.hikari.HikariDataSource;
-import java.awt.*;
-import java.net.URI;
-import javax.sql.DataSource;
+import cz.levy.pet.shelter.aggregator.dto.DogDto;
+import cz.levy.pet.shelter.aggregator.entity.DogEntity;
+import cz.levy.pet.shelter.aggregator.entity.ShelterEntity;
+import cz.levy.pet.shelter.aggregator.mapper.DogMapper;
+import cz.levy.pet.shelter.aggregator.repository.DogRepository;
+import cz.levy.pet.shelter.aggregator.repository.ShelterRepository;
 import lombok.SneakyThrows;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.SmartLifecycle;
@@ -12,18 +18,26 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.testcontainers.containers.PostgreSQLContainer;
 
+import javax.sql.DataSource;
+import java.awt.*;
+import java.io.InputStream;
+import java.net.URI;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Configuration
 @Profile("local-simulated")
 public class LocalSimulatedConfig implements WebMvcConfigurer {
 
-  private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:14");
+
+  private static final PostgreSQLContainer<?> POSTGRES =
+          new PostgreSQLContainer<>("postgres:14");
 
   @Bean
   public PostgreSQLContainer<?> postgresContainer() {
@@ -44,18 +58,35 @@ public class LocalSimulatedConfig implements WebMvcConfigurer {
 
   @Override
   public void addResourceHandlers(ResourceHandlerRegistry registry) {
-    registry.addResourceHandler("/**").addResourceLocations("classpath:/static/");
+    registry.addResourceHandler("/**")
+            .addResourceLocations("classpath:/static/");
   }
 
+  /**
+   * Instead of running SQL init, load dogs.json and persist via repository
+   */
   @Bean
-  public CommandLineRunner seedDatabase(DataSource dataSource) {
+  @DependsOn("dataSource")
+  public CommandLineRunner loadSampleData(DogRepository dogRepository, ShelterRepository shelterRepository) {
     return args -> {
-      ResourceDatabasePopulator populator =
-          new ResourceDatabasePopulator(new ClassPathResource("db/init.sql"));
-      populator.execute(dataSource);
+      var shelter = shelterRepository.save(ShelterEntity.builder().name("PesWeb.cz")
+                      .url("https://www.pesweb.cz/cz/psi-k-adopci")
+                      .isNonProfit(true)
+              .build());
+      ObjectMapper mapper = new ObjectMapper();
+      try (InputStream is =
+                   getClass().getResourceAsStream("/dogs.json")) {
+        List<DogDto> dtos =
+                mapper.readValue(is, new TypeReference<>(){});
+
+        List<DogEntity> entities = dtos.stream().map(dogDto -> DogMapper.dtoToEntity(dogDto, shelter))
+                .collect(Collectors.toList());
+
+        dogRepository.saveAll(entities);
+        System.out.println("Loaded " + entities.size() + " dogs from JSON");
+      }
     };
   }
-
   @Component
   @Profile("local-simulated")
   public class BrowserOpener implements SmartLifecycle {
