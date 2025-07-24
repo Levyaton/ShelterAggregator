@@ -44,7 +44,7 @@ public class LocalSimulatedConfig implements WebMvcConfigurer {
 
   @Override
   public void addResourceHandlers(ResourceHandlerRegistry registry) {
-    registry.addResourceHandler("/**").addResourceLocations("classpath:/website/");
+    registry.addResourceHandler("/**").addResourceLocations("classpath:/static/");
   }
 
   @Bean

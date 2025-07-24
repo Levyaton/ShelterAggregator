@@ -11,9 +11,9 @@ import cz.levy.pet.shelter.aggregator.mapper.DogMapper;
 import cz.levy.pet.shelter.aggregator.repository.DogRepository;
 import cz.levy.pet.shelter.aggregator.repository.ShelterRepository;
 import cz.levy.pet.shelter.aggregator.spec.DogSpec;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.stream.IntStream;
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.util.Pair;
 import org.springframework.data.domain.Page;
@@ -136,13 +136,16 @@ public class DogSheltersService {
     private static final int MAX_POINTS = 24;
 
     public static List<DogEntity> getRandomWeightedSelection(List<DogEntity> dogs, int size) {
-      var weightedDogs = dogs.stream().map(dog -> Pair.create(dog, computeWeight(dog))).toList();
-      EnumeratedDistribution<DogEntity> distribution = new EnumeratedDistribution<>(weightedDogs);
-
-      return IntStream.range(0, size)
-          .takeWhile(_ -> !distribution.getPmf().isEmpty())
-          .mapToObj(_ -> distribution.sample())
-          .toList();
+      var weightedDogs =
+          new ArrayList<>(dogs.stream().map(dog -> Pair.create(dog, computeWeight(dog))).toList());
+      List<DogEntity> selectedDogs = new ArrayList<>();
+      for (int i = 0; i < size && !weightedDogs.isEmpty(); i++) {
+        EnumeratedDistribution<DogEntity> distribution = new EnumeratedDistribution<>(weightedDogs);
+        DogEntity sampledDog = distribution.sample();
+        selectedDogs.add(sampledDog);
+        weightedDogs.removeIf(pair -> pair.getFirst().equals(sampledDog));
+      }
+      return selectedDogs;
     }
 
     private static double computeWeight(DogEntity dog) {
