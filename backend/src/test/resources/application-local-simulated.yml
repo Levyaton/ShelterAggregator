@@ -17,3 +17,8 @@ spring:
     url: jdbc:tc:postgresql:14:///test
     username: test
     password: test
+
+  mvc:
+    static-path-pattern: "/**"
+  resources:
+    static-locations: classpath:/static/,file:../frontend/build/

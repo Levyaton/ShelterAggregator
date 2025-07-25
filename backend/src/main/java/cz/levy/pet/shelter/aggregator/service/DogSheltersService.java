@@ -11,9 +11,10 @@ import cz.levy.pet.shelter.aggregator.mapper.DogMapper;
 import cz.levy.pet.shelter.aggregator.repository.DogRepository;
 import cz.levy.pet.shelter.aggregator.repository.ShelterRepository;
 import cz.levy.pet.shelter.aggregator.spec.DogSpec;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.util.Pair;
 import org.springframework.data.domain.Page;
@@ -132,20 +133,18 @@ public class DogSheltersService {
   }
 
   static class RandomnessWeight {
-    private static final double MAX_BONUS_PERCENT = 0.02;
+    private static final double MIN_WEIGHT = 0.01;
+    private static final double MAX_WEIGHT = 0.02;
     private static final int MAX_POINTS = 24;
 
     public static List<DogEntity> getRandomWeightedSelection(List<DogEntity> dogs, int size) {
       var weightedDogs =
-          new ArrayList<>(dogs.stream().map(dog -> Pair.create(dog, computeWeight(dog))).toList());
-      List<DogEntity> selectedDogs = new ArrayList<>();
-      for (int i = 0; i < size && !weightedDogs.isEmpty(); i++) {
-        EnumeratedDistribution<DogEntity> distribution = new EnumeratedDistribution<>(weightedDogs);
-        DogEntity sampledDog = distribution.sample();
-        selectedDogs.add(sampledDog);
-        weightedDogs.removeIf(pair -> pair.getFirst().equals(sampledDog));
-      }
-      return selectedDogs;
+          dogs.stream().map(d -> Pair.create(d, computeWeight(d))).collect(Collectors.toList());
+      EnumeratedDistribution<DogEntity> dist = new EnumeratedDistribution<>(weightedDogs);
+
+      Object[] raw = dist.sample(size);
+
+      return Arrays.stream(raw).map(o -> (DogEntity) o).toList();
     }
 
     private static double computeWeight(DogEntity dog) {
@@ -159,8 +158,8 @@ public class DogSheltersService {
       if (dog.getDogAddress() == null) points += 1;
       if (dog.getImageUrls() == null || dog.getImageUrls().size() <= 2) points += 3;
 
-      double bonus = (points / (double) MAX_POINTS) * MAX_BONUS_PERCENT;
-      return 1.0 + bonus;
+      double frac = points / (double) MAX_POINTS;
+      return MIN_WEIGHT + frac * (MAX_WEIGHT - MIN_WEIGHT);
     }
   }
 }

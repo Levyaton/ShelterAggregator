@@ -153,35 +153,32 @@
 				<artifactId>exec-maven-plugin</artifactId>
 				<version>3.1.0</version>
 				<executions>
+					<!-- 1) Install dependencies -->
 					<execution>
 						<id>npm-install</id>
 						<phase>generate-resources</phase>
-						<goals>
-							<goal>exec</goal>
-						</goals>
+						<goals><goal>exec</goal></goals>
 						<configuration>
 							<executable>npm</executable>
 							<workingDirectory>${project.basedir}/../frontend</workingDirectory>
-							<arguments>
-								<argument>install</argument>
-							</arguments>
+							<arguments><argument>install</argument></arguments>
 						</configuration>
 					</execution>
+					<!-- 2) Build React app -->
 					<execution>
-						<id>npm-start</id>
-						<phase>pre-integration-test</phase>
-						<goals>
-							<goal>exec</goal>
-						</goals>
+						<id>npm-build</id>
+						<phase>compile</phase>
+						<goals><goal>exec</goal></goals>
 						<configuration>
 							<executable>npm</executable>
 							<workingDirectory>${project.basedir}/../frontend</workingDirectory>
 							<arguments>
 								<argument>run</argument>
-								<argument>start</argument>
+								<argument>build</argument>
 							</arguments>
 						</configuration>
 					</execution>
+					<!-- 3) *Remove* exec-maven-plugin's dev proxy; Node is now launched by Spring Boot on startup -->
 				</executions>
 			</plugin>
 			<plugin>
@@ -198,10 +195,7 @@
 				<directory>src/main/resources</directory>
 			</resource>
 			<resource>
-				<directory>${project.basedir}/../frontend/src/main/resources</directory>
-				<includes>
-					<include>static/**</include>
-				</includes>
+				<directory>${project.basedir}/../frontend/build</directory>
 				<filtering>false</filtering>
 			</resource>
 		</resources>
