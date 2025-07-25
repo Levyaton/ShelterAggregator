@@ -13,9 +13,9 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     if: |
-      ${{ github.event_name == 'pull_request' }}
-      || ${{ github.event_name == 'push' }}
-      || ${{ github.event_name == 'repository_dispatch' }}
+      github.event_name == 'pull_request'
+      || github.event_name == 'push'
+      || github.event_name == 'repository_dispatch'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -34,5 +34,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-m2-
 
-      - name: Package artifact
-        run: mvn package -B
+      - name: Set up Node.js for Frontend
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install & Build Frontend
+        working-directory: frontend
+        run: |
+          npm install
+          npm run build
+
+      - name: Package Backend Only
+        # build just the backend module (skip integrations altogether)
+        run: mvn package -B -pl backend -am

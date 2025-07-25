@@ -9,8 +9,15 @@ import cz.levy.pet.shelter.aggregator.entity.ShelterEntity;
 import cz.levy.pet.shelter.aggregator.mapper.DogMapper;
 import cz.levy.pet.shelter.aggregator.repository.DogRepository;
 import cz.levy.pet.shelter.aggregator.repository.ShelterRepository;
-import lombok.SneakyThrows;
-import org.springframework.beans.factory.annotation.Autowired;
+import java.awt.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.stream.Collectors;
+import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.SmartLifecycle;
@@ -18,26 +25,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Profile;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.resource.PathResourceResolver;
 import org.testcontainers.containers.PostgreSQLContainer;
-
-import javax.sql.DataSource;
-import java.awt.*;
-import java.io.InputStream;
-import java.net.URI;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Configuration
 @Profile("local-simulated")
 public class LocalSimulatedConfig implements WebMvcConfigurer {
 
-
-  private static final PostgreSQLContainer<?> POSTGRES =
-          new PostgreSQLContainer<>("postgres:14");
+  private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:14");
 
   @Bean
   public PostgreSQLContainer<?> postgresContainer() {
@@ -58,28 +56,102 @@ public class LocalSimulatedConfig implements WebMvcConfigurer {
 
   @Override
   public void addResourceHandlers(ResourceHandlerRegistry registry) {
-    registry.addResourceHandler("/**")
-            .addResourceLocations("classpath:/static/");
+    // Compute absolute path to frontend/build
+    String userDir = System.getProperty("user.dir");
+    Path buildPath = Paths.get(userDir).resolve("frontend/build").normalize().toAbsolutePath();
+    String buildLocation = "file:" + buildPath + "/";
+
+    registry
+        .addResourceHandler("/**")
+        .addResourceLocations("classpath:/static/", buildLocation)
+        .setCachePeriod(0)
+        .resourceChain(true)
+        .addResolver(new PathResourceResolver());
   }
 
-  /**
-   * Instead of running SQL init, load dogs.json and persist via repository
-   */
+  @Bean
+  public SmartLifecycle nodeProxyLifecycle() {
+    return new SmartLifecycle() {
+      private Process process;
+      private boolean running = false;
+
+      @Override
+      public void start() {
+        try {
+          String userDir = System.getProperty("user.dir");
+          Path frontendPath =
+              Paths.get(userDir)
+                  .resolve("frontend") // adjust relative levels
+                  .normalize()
+                  .toAbsolutePath();
+
+          ProcessBuilder pb;
+          String os = System.getProperty("os.name").toLowerCase();
+          if (os.contains("win")) {
+            pb = new ProcessBuilder("cmd", "/c", "npm.cmd", "run", "dev");
+          } else {
+            pb = new ProcessBuilder("npm", "run", "dev");
+          }
+          pb.directory(frontendPath.toFile());
+          pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+          pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+          process = pb.start();
+          running = true;
+        } catch (IOException e) {
+          throw new RuntimeException("Failed to start React and Node dev servers", e);
+        }
+      }
+
+      @Override
+      public void stop() {
+        if (process != null && process.isAlive()) {
+          process.destroyForcibly();
+        }
+        running = false;
+      }
+
+      @Override
+      public boolean isRunning() {
+        return running;
+      }
+
+      @Override
+      public int getPhase() {
+        return Integer.MAX_VALUE - 1;
+      }
+
+      @Override
+      public boolean isAutoStartup() {
+        return true;
+      }
+
+      @Override
+      public void stop(Runnable callback) {
+        stop();
+        callback.run();
+      }
+    };
+  }
+
   @Bean
   @DependsOn("dataSource")
-  public CommandLineRunner loadSampleData(DogRepository dogRepository, ShelterRepository shelterRepository) {
+  public CommandLineRunner loadSampleData(
+      DogRepository dogRepository, ShelterRepository shelterRepository) {
     return args -> {
-      var shelter = shelterRepository.save(ShelterEntity.builder().name("PesWeb.cz")
-                      .url("https://www.pesweb.cz/cz/psi-k-adopci")
-                      .isNonProfit(true)
-              .build());
+      var shelter =
+          shelterRepository.save(
+              ShelterEntity.builder()
+                  .name("PesWeb.cz")
+                  .url("https://www.pesweb.cz/cz/psi-k-adopci")
+                  .isNonProfit(true)
+                  .build());
       ObjectMapper mapper = new ObjectMapper();
-      try (InputStream is =
-                   getClass().getResourceAsStream("/dogs.json")) {
-        List<DogDto> dtos =
-                mapper.readValue(is, new TypeReference<>(){});
+      try (InputStream is = getClass().getResourceAsStream("/dogs.json")) {
+        List<DogDto> dtos = mapper.readValue(is, new TypeReference<>() {});
 
-        List<DogEntity> entities = dtos.stream().map(dogDto -> DogMapper.dtoToEntity(dogDto, shelter))
+        List<DogEntity> entities =
+            dtos.stream()
+                .map(dogDto -> DogMapper.dtoToEntity(dogDto, shelter))
                 .collect(Collectors.toList());
 
         dogRepository.saveAll(entities);
@@ -87,6 +159,7 @@ public class LocalSimulatedConfig implements WebMvcConfigurer {
       }
     };
   }
+
   @Component
   @Profile("local-simulated")
   public class BrowserOpener implements SmartLifecycle {
@@ -95,44 +168,18 @@ public class LocalSimulatedConfig implements WebMvcConfigurer {
     @Value("${server.port:8080}")
     private int serverPort;
 
-    @SneakyThrows
     @Override
     public void start() {
-      String url = "http://localhost:" + serverPort + "/index.html";
-      if (openedChrome(url)) return;
-      if (openedEdge(url)) return;
-      if (openedDefaultBrowser(url)) return;
-      else System.out.println("Open " + url + " in your browser.");
-      running = true;
-    }
-
-    private boolean openedChrome(String url) {
       try {
-        new ProcessBuilder("cmd", "/c", "start", "chrome", url).start();
-        running = true;
-        return true;
-      } catch (Exception ignored) {
-        return false;
-      }
-    }
-
-    private boolean openedEdge(String url) {
-      try {
-        new ProcessBuilder("cmd", "/c", "start", "msedge", url).start();
-
-        running = true;
-        return true;
-      } catch (Exception ignored) {
-        return false;
-      }
-    }
-
-    private boolean openedDefaultBrowser(String url) throws Exception {
-      if (Desktop.isDesktopSupported()) {
-        Desktop.getDesktop().browse(new URI(url));
-        return true;
-      } else {
-        return false;
+        String url = "http://localhost:" + serverPort + "/";
+        if (Desktop.isDesktopSupported()) {
+          Desktop.getDesktop().browse(new URI(url));
+          running = true;
+        } else {
+          System.out.println("Please open " + url + " in your browser.");
+        }
+      } catch (Exception e) {
+        System.err.println("Failed to open browser: " + e.getMessage());
       }
     }
 
@@ -149,6 +196,17 @@ public class LocalSimulatedConfig implements WebMvcConfigurer {
     @Override
     public int getPhase() {
       return Integer.MAX_VALUE;
+    }
+
+    @Override
+    public boolean isAutoStartup() {
+      return true;
+    }
+
+    @Override
+    public void stop(Runnable callback) {
+      running = false;
+      callback.run();
     }
   }
 }

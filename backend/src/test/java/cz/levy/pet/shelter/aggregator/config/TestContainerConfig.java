@@ -16,7 +16,7 @@ public class TestContainerConfig {
             .withDatabaseName("testdb")
             .withUsername("test")
             .withPassword("test");
-    container.start(); // make sure it’s running by the time Spring wires up the DataSource
+    container.start();
     return container;
   }
 }

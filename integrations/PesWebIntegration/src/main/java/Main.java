@@ -1,10 +1,8 @@
 import service.DogExporter;
 
-import java.io.IOException;
-
 public class Main {
-    public static void main(String[] args) throws Exception {
-        // will write all dogs into dogs.json in your working dir
-        DogExporter.exportAllDogs("dogs.json");
-    }
+  public static void main(String[] args) throws Exception {
+    // will write all dogs into dogs.json in your working dir
+    DogExporter.exportAllDogs("dogs.json");
+  }
 }

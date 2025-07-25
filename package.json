@@ -1,0 +1,25 @@
+{
+  "name": "shelteraggregator",
+  "version": "1.0.0",
+  "description": "This is an app that is designed to aggregate dog shelters from mostly the Czech Republic. The goal is not to impede on the traffic of those shelters, but instead, make it easier to find them.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Levyaton/ShelterAggregator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Levyaton/ShelterAggregator/issues"
+  },
+  "homepage": "https://github.com/Levyaton/ShelterAggregator#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2"
+  }
+}

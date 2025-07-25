@@ -18,7 +18,6 @@
     <name>Shelter Aggregator</name>
 
     <modules>
-        <module>node-scripts</module>
         <module>frontend</module>
         <module>backend</module>
         <module>integrations</module>
