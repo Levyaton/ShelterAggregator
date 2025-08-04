@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import DogCarousel from './components/DogCarousel.js';
 import './components/DogCarousel.css';
+import DogCarouselV2 from "./components/DogCarouselV2.jsx";
 
 const container = document.getElementById('root');
-createRoot(container).render(<DogCarousel />);
+createRoot(container).render(<DogCarouselV2 />);
