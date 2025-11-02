@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import './DogGrid.css';
+import LogoAdoptujMe from './LogoAdoptujMe.png';
 
 // Constants
 const GRID_SIZE = 42; // 6 rows x 7 columns
@@ -9,18 +10,28 @@ const COLUMNS = 7;
 
 // TypeScript interfaces
 interface DogImage {
+  id: string | number;
   url: string;
-  id: string;
+  name?: string;
+  description?: string;
+  breedGuess?: string;
+  sex?: string;
+  estimatedAgeInYears?: number;
+  currentWeight?: number;
+  estimatedFinalWeightMin?: number;
+  estimatedFinalWeightMax?: number;
+  dogAddress?: string;
+  shelterUrl?: string;
 }
 
 interface HoverState {
-  imageId: string | null;
+  imageId: string | number | null;
   url: string | null;
 }
 
 interface OverlayState {
   isVisible: boolean;
-  imageUrl: string | null;
+  dog: DogImage | null;
 }
 
 // Animated dots component for loading
@@ -43,34 +54,96 @@ const DogGrid = () => {
   });
   const [overlay, setOverlay] = useState<OverlayState>({
     isVisible: false,
-    imageUrl: null
+    dog: null
   });
-  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [previewAnchor, setPreviewAnchor] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [loadStatus, setLoadStatus] = useState<Record<string, { loaded: boolean; attempts: number; failed: boolean; isPlaceholder: boolean }>>({});
+
+  const sanitizeMeta = (text?: string): string => {
+    if (!text) return '';
+    return text.replace(/^\s*,\s*/, '');
+  };
+
+  // Placeholder for missing/broken images (white bg with gray X)
+  const PLACEHOLDER_IMAGE =
+    'data:image/svg+xml;utf8,' +
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+         <rect width="100%" height="100%" fill="white"/>
+         <line x1="10" y1="10" x2="190" y2="190" stroke="#bbb" stroke-width="8"/>
+         <line x1="190" y1="10" x2="10" y2="190" stroke="#bbb" stroke-width="8"/>
+       </svg>`
+    );
 
   // Load images from backend
   const loadImages = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      const { data: urls } = await axios.get(`/api/dogs?size=${GRID_SIZE}`);
+      const { data } = await axios.get(`/api/dogs?size=${GRID_SIZE}`);
       
-      // Preload images
+      // Preload images (or placeholders)
       await Promise.all(
-        urls.map((url: string) => new Promise<void>((resolve) => {
-          const img = new window.Image();
-          img.onload = () => resolve();
-          img.onerror = () => resolve(); // Continue even if image fails to load
-          img.src = url;
-        }))
+        (Array.isArray(data) ? data : [])
+          .map((raw: any, index: number) => {
+            const url = typeof raw === 'string' ? raw : raw?.url;
+            return url ? url : PLACEHOLDER_IMAGE;
+          })
+          .filter((u: string | null): u is string => Boolean(u))
+          .map((url: string) => new Promise<void>((resolve) => {
+            const img = new window.Image();
+            img.onload = () => resolve();
+            img.onerror = () => resolve(); // Continue even if image fails to load
+            img.src = url;
+          }))
       );
 
-      // Create image objects with unique IDs
-      const newImages: DogImage[] = urls.map((url: string, index: number) => ({
-        url,
-        id: `dog-${Date.now()}-${index}`
-      }));
+      // Normalize server payload to DogImage[]
+      let newImages: DogImage[] = (Array.isArray(data) ? data : [])
+        .map((raw: any, index: number): DogImage | null => {
+          if (typeof raw === 'string') {
+            return { id: `dog-${Date.now()}-${index}` , url: raw || PLACEHOLDER_IMAGE };
+          }
+          if (raw && typeof raw.url === 'string') {
+            return {
+              id: raw.id ?? `dog-${Date.now()}-${index}`,
+              url: raw.url || PLACEHOLDER_IMAGE,
+              name: raw.name,
+              description: raw.description,
+              breedGuess: raw.breedGuess,
+              sex: raw.sex,
+              estimatedAgeInYears: raw.estimatedAgeInYears,
+              currentWeight: raw.currentWeight,
+              estimatedFinalWeightMin: raw.estimatedFinalWeightMin,
+              estimatedFinalWeightMax: raw.estimatedFinalWeightMax,
+              dogAddress: raw.dogAddress,
+              shelterUrl: raw.shelterUrl,
+            };
+          }
+          // No usable data; still return a placeholder item to represent the dog entity
+          return {
+            id: `dog-${Date.now()}-${index}`,
+            url: PLACEHOLDER_IMAGE,
+          } as DogImage;
+        })
+        .filter((d: DogImage | null): d is DogImage => Boolean(d));
+
+      // Dedupe by id if present, otherwise by url
+      const seen = new Set<string>();
+      newImages = newImages.filter((img) => {
+        const key = (img.id !== undefined && img.id !== null) ? `id:${String(img.id)}` : `url:${img.url}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
       setImages(newImages);
-      setIsReady(true);
+      // initialize per-image load status
+      const initial: Record<string, { loaded: boolean; attempts: number; failed: boolean; isPlaceholder: boolean }> = {};
+      newImages.forEach(img => {
+        const isPh = img.url === PLACEHOLDER_IMAGE;
+        initial[String(img.id)] = { loaded: isPh, attempts: 0, failed: false, isPlaceholder: isPh };
+      });
+      setLoadStatus(initial);
     } catch (error) {
       console.error('Failed to load images:', error);
       setIsReady(true); // Show component even if loading fails
@@ -84,15 +157,56 @@ const DogGrid = () => {
     loadImages();
   }, []);
 
+  // Per-image retry loader and 90% readiness logic
+  useEffect(() => {
+    const maxAttempts = 10;
+    const timers: number[] = [];
+
+    images.forEach((img) => {
+      const key = String(img.id);
+      const st = loadStatus[key];
+      if (!st || st.isPlaceholder || st.loaded || st.failed) return;
+
+      const attemptLoad = () => {
+        const i = new window.Image();
+        i.onload = () => setLoadStatus(prev => ({ ...prev, [key]: { ...prev[key], loaded: true } }));
+        i.onerror = () => setLoadStatus(prev => {
+          const cur = prev[key];
+          const nextAttempts = (cur?.attempts ?? 0) + 1;
+          const failed = nextAttempts >= maxAttempts;
+          return { ...prev, [key]: { ...cur, attempts: nextAttempts, failed } };
+        });
+        i.src = img.url;
+      };
+
+      // first attempt or retry with backoff
+      const delay = st.attempts === 0 ? 0 : 500 + Math.min(1500, st.attempts * 300);
+      const t = window.setTimeout(attemptLoad, delay);
+      timers.push(t);
+    });
+
+    // readiness threshold
+    if (images.length > 0) {
+      const loadedCount = images.filter(im => {
+        const st = loadStatus[String(im.id)];
+        return st && (st.loaded || st.isPlaceholder || st.failed);
+      }).length;
+      if (loadedCount / images.length >= 0.9) setIsReady(true);
+    }
+
+    return () => timers.forEach(t => window.clearTimeout(t));
+  }, [images, loadStatus]);
+
   // Handle shuffle button click
   const handleShuffle = (): void => {
     loadImages();
   };
 
   // Handle image hover
-  const handleImageHover = (e: React.MouseEvent, imageId: string, url: string): void => {
+  const handleImageHover = (e: React.MouseEvent, imageId: string | number, url: string): void => {
     setHovered({ imageId, url });
-    setMousePos({ x: e.clientX, y: e.clientY });
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setPreviewAnchor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   };
 
   // Handle mouse leave
@@ -101,13 +215,13 @@ const DogGrid = () => {
   };
 
   // Handle image click to show overlay
-  const handleImageClick = (url: string): void => {
-    setOverlay({ isVisible: true, imageUrl: url });
+  const handleImageClick = (dog: DogImage): void => {
+    setOverlay({ isVisible: true, dog });
   };
 
   // Handle overlay close
   const handleOverlayClose = (): void => {
-    setOverlay({ isVisible: false, imageUrl: null });
+    setOverlay({ isVisible: false, dog: null });
   };
 
   // Handle overlay background click
@@ -116,6 +230,10 @@ const DogGrid = () => {
       handleOverlayClose();
     }
   };
+
+  // Temporary animal labeling (future-proof for cats)
+  const animalAccusative = 'Pejska'; // e.g., swap to 'Kočičky' for cats
+  const animalAdjective = 'Psí'; // e.g., swap to 'Kočičí' for cats
 
   return (
     <div className="dog-grid-wrapper">
@@ -134,7 +252,9 @@ const DogGrid = () => {
       )}
       
       <div className="header">
+        <img src={LogoAdoptujMe} alt="Adoptuj mě" className="logo" draggable={false} />
         <h1 className="title">Adoptuj mě, prosím!</h1>
+        <div className="header-spacer" />
       </div>
       
       {/* Loading indicator above grid */}
@@ -148,45 +268,112 @@ const DogGrid = () => {
       <div className="dog-grid">
         {images.map((image) => (
           <div
-            key={image.id}
+            key={String(image.id)}
             className={`dog-grid-item ${
               hovered.imageId === image.id ? 'dog-grid-item-hovered' : ''
             }`}
             onMouseEnter={(e) => handleImageHover(e, image.id, image.url)}
-            onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+            // preview position is based on card center; no need to track mouse move
             onMouseLeave={handleImageUnhover}
-            onClick={() => handleImageClick(image.url)}
+            onClick={() => handleImageClick(image)}
           >
             <img
-              src={image.url}
+              src={(() => { const st = loadStatus[String(image.id)]; return (st && (st.failed || st.isPlaceholder)) ? PLACEHOLDER_IMAGE : image.url; })()}
               alt="Dog"
-              className="dog-image"
+              className={`dog-image ${(() => { const st = loadStatus[String(image.id)]; return st && !st.loaded && !st.isPlaceholder && !st.failed ? 'is-loading' : '' })()}`}
               draggable={false}
+              onError={() => {
+                const key = String(image.id);
+                setLoadStatus(prev => {
+                  const s = prev[key];
+                  if (!s || s.isPlaceholder) return prev;
+                  const nextAttempts = (s.attempts ?? 0) + 1;
+                  const failed = nextAttempts >= 10;
+                  return { ...prev, [key]: { ...s, attempts: nextAttempts, failed } };
+                });
+              }}
             />
+            {(() => { const st = loadStatus[String(image.id)]; return st && !st.loaded && !st.isPlaceholder && !st.failed; })() && (
+              <div className="card-skeleton" />
+            )}
+            <div className="dog-card-overlay">
+              <div className="dog-card-line title-line">
+                <span className="dog-card-name">{image.name || 'Neznámé jméno'}</span>
+                {image.sex && (
+                  <span className="sex-icon small" aria-label={image.sex} title={image.sex}>
+                    {image.sex === 'MALE' ? (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="#2d7ff9" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14 2h8v8h-2V6.414l-4.293 4.293-1.414-1.414L18.586 5H14V2z"/>
+                        <path d="M10 6a6 6 0 1 1 0 12 6 6 0 0 1 0-12zm0 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
+                      </svg>
+                    ) : (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="#ff61ad" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2a6 6 0 1 1 0 12A6 6 0 0 1 12 2zm0 2a4 4 0 1 0 .001 8.001A4 4 0 0 0 12 4z"/>
+                        <path d="M11 14h2v3h3v2h-3v3h-2v-3H8v-2h3v-3z"/>
+                      </svg>
+                    )}
+                  </span>
+                )}
+                {typeof image.estimatedAgeInYears === 'number' && (
+                  <span className="dog-card-age">{image.estimatedAgeInYears} r.</span>
+                )}
+              </div>
+              <div className="dog-card-line meta-line">
+                {sanitizeMeta(image.breedGuess) && (
+                  <span>{sanitizeMeta(image.breedGuess)}</span>
+                )}
+                <span>
+                  {(() => {
+                    if (image.shelterUrl) {
+                      try { return new URL(image.shelterUrl).hostname.replace(/^www\./,''); } catch { return 'útulek'; }
+                    }
+                    return 'útulek';
+                  })()}
+                </span>
+              </div>
+            </div>
           </div>
         ))}
       </div>
       
       {/* Hover preview */}
       {hovered.url && (
-        <div
-          className="dog-hover-preview"
-          style={{
-            top: mousePos.y,
-            // offset preview slightly to the right of the cursor and clamp within viewport
-            left: Math.min(
-              (typeof window !== 'undefined' ? window.innerWidth : 1920) - 20,
-              mousePos.x + 24
-            ),
-            transform: 'translate(0, -50%)'
-          }}
-        >
-          <img src={hovered.url} alt="Preview" className="dog-hover-image" />
-        </div>
+        (() => {
+          const vv = typeof window !== 'undefined' && (window as any).visualViewport ? (window as any).visualViewport : null;
+          const vw = vv ? vv.width : (typeof window !== 'undefined' ? window.innerWidth : 1920);
+          const vh = vv ? vv.height : (typeof window !== 'undefined' ? window.innerHeight : 1080);
+          const safe = 20;
+          const leftSpace = previewAnchor.x - safe;
+          const rightSpace = vw - previewAnchor.x - safe;
+          const topSpace = previewAnchor.y - safe;
+          const bottomSpace = vh - previewAnchor.y - safe;
+
+          const placeLeft = leftSpace > rightSpace;
+          const placeAbove = topSpace > bottomSpace;
+
+          const baseLeft = placeLeft ? previewAnchor.x - 24 : previewAnchor.x + 24;
+          const baseTop = placeAbove ? previewAnchor.y - 24 : previewAnchor.y + 24;
+
+          // Clamp within viewport safe area
+          const left = Math.min(vw - safe, Math.max(safe, baseLeft));
+          const top = Math.min(vh - safe, Math.max(safe, baseTop));
+
+          let transform = 'translate(0, 0)';
+          if (placeLeft && placeAbove) transform = 'translate(-100%, -100%)';
+          else if (!placeLeft && placeAbove) transform = 'translate(0, -100%)';
+          else if (placeLeft && !placeAbove) transform = 'translate(-100%, 0)';
+          else transform = 'translate(0, 0)';
+
+          return (
+            <div className="dog-hover-preview" style={{ top, left, transform }}>
+              <img src={hovered.url} alt="Preview" className="dog-hover-image" onError={(e) => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER_IMAGE; }} />
+            </div>
+          );
+        })()
       )}
       
       {/* Full overlay */}
-      {overlay.isVisible && overlay.imageUrl && (
+      {overlay.isVisible && overlay.dog && (
         <div 
           className="dog-overlay" 
           onClick={handleOverlayBackgroundClick}
@@ -200,10 +387,84 @@ const DogGrid = () => {
               ×
             </button>
             <img 
-              src={overlay.imageUrl} 
-              alt="Dog" 
-              className="dog-overlay-image" 
+              src={(() => { const st = loadStatus[String(overlay.dog!.id)]; return (st && (st.failed || st.isPlaceholder)) ? PLACEHOLDER_IMAGE : overlay.dog!.url; })()} 
+              alt={overlay.dog.name || 'Dog'} 
+              className={`dog-overlay-image ${(() => { const st = loadStatus[String(overlay.dog!.id)]; return st && !st.loaded && !st.isPlaceholder && !st.failed ? 'is-loading' : '' })()}`} 
+              onError={() => {
+                const key = String(overlay.dog!.id);
+                setLoadStatus(prev => {
+                  const s = prev[key];
+                  if (!s || s.isPlaceholder) return prev;
+                  const nextAttempts = (s.attempts ?? 0) + 1;
+                  const failed = nextAttempts >= 10;
+                  return { ...prev, [key]: { ...s, attempts: nextAttempts, failed } };
+                });
+              }}
             />
+            <div className="dog-info-box">
+              <div className="dog-info-title">{overlay.dog.name || 'Neznámé jméno'}</div>
+              <div className="dog-info-meta">
+                {sanitizeMeta(overlay.dog.breedGuess) && <span>{sanitizeMeta(overlay.dog.breedGuess)}</span>}
+                {overlay.dog.sex && (
+                  <span className="sex-icon" aria-label={overlay.dog.sex} title={overlay.dog.sex}>
+                    {overlay.dog.sex === 'MALE' ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="#2d7ff9" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14 2h8v8h-2V6.414l-4.293 4.293-1.414-1.414L18.586 5H14V2z"/>
+                        <path d="M10 6a6 6 0 1 1 0 12 6 6 0 0 1 0-12zm0 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="#ff61ad" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2a6 6 0 1 1 0 12A6 6 0 0 1 12 2zm0 2a4 4 0 1 0 .001 8.001A4 4 0 0 0 12 4z"/>
+                        <path d="M11 14h2v3h3v2h-3v3h-2v-3H8v-2h3v-3z"/>
+                      </svg>
+                    )}
+                  </span>
+                )}
+                {typeof overlay.dog.estimatedAgeInYears === 'number' && (
+                  <span> • {overlay.dog.estimatedAgeInYears} roků</span>
+                )}
+              </div>
+              {/* Description intentionally omitted in overlay */}
+              <div className="dog-info-linkline">
+                Více informací najdete <a className="link" href={overlay.dog.shelterUrl || '#'} target="_blank" rel="noreferrer">ZDE</a>
+              </div>
+              <div className="dog-info-footer">
+                {overlay.dog.shelterUrl && (() => {
+                  try {
+                    const u = new URL(overlay.dog.shelterUrl);
+                    const shelterHome = u.origin;
+                    return (
+                      <>
+                        <a className="btn" href={shelterHome} target="_blank" rel="noreferrer">Útulek {animalAccusative}</a>
+                        {overlay.dog.currentWeight && (
+                          <span className="pill">{overlay.dog.currentWeight} kg</span>
+                        )}
+                        {(overlay.dog.estimatedFinalWeightMin || overlay.dog.estimatedFinalWeightMax) && (
+                          <span className="pill">
+                            finální váha {overlay.dog.estimatedFinalWeightMin || '?'}–{overlay.dog.estimatedFinalWeightMax || '?'} kg
+                          </span>
+                        )}
+                        <a className="btn primary" href={overlay.dog.shelterUrl} target="_blank" rel="noreferrer">{animalAdjective} profil</a>
+                      </>
+                    );
+                  } catch {
+                    return (
+                      <>
+                        {overlay.dog.currentWeight && (
+                          <span className="pill">{overlay.dog.currentWeight} kg</span>
+                        )}
+                        {(overlay.dog.estimatedFinalWeightMin || overlay.dog.estimatedFinalWeightMax) && (
+                          <span className="pill">
+                            finální váha {overlay.dog.estimatedFinalWeightMin || '?'}–{overlay.dog.estimatedFinalWeightMax || '?'} kg
+                          </span>
+                        )}
+                        <a className="btn primary" href={overlay.dog.shelterUrl!} target="_blank" rel="noreferrer">{animalAdjective} profil</a>
+                      </>
+                    );
+                  }
+                })()}
+              </div>
+            </div>
           </div>
         </div>
       )}

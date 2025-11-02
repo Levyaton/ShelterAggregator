@@ -2,6 +2,8 @@ package cz.levy.pet.shelter.aggregator.controller;
 
 import static cz.levy.pet.shelter.aggregator.mapper.DogMapper.requestToDto;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import cz.levy.pet.shelter.aggregator.api.DogRequest;
 import cz.levy.pet.shelter.aggregator.api.DogResponse;
 import cz.levy.pet.shelter.aggregator.domain.DogSize;
@@ -11,6 +13,9 @@ import cz.levy.pet.shelter.aggregator.mapper.DogMapper;
 import cz.levy.pet.shelter.aggregator.service.DogSheltersService;
 import jakarta.validation.Valid;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
@@ -21,11 +26,13 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/dogs")
 public class DogSheltersController {
-
+    private final ObjectMapper objectMapper;
+    private Logger logger = LoggerFactory.getLogger(DogSheltersController.class);
   private final DogSheltersService dogSheltersService;
 
-  public DogSheltersController(DogSheltersService dogSheltersService) {
+  public DogSheltersController(DogSheltersService dogSheltersService, ObjectMapper objectMapper) {
     this.dogSheltersService = dogSheltersService;
+      this.objectMapper = objectMapper;
   }
 
   @PostMapping()
@@ -63,8 +70,12 @@ public class DogSheltersController {
       @RequestParam(required = false) Float ageMax,
       @RequestParam(required = false) Sex sex,
       @RequestParam(required = false) DogSize dogSize,
-      @RequestParam(required = false, defaultValue = "false") boolean randomise) {
-    if (randomise) return ResponseEntity.ok(dogSheltersService.getRandomDogs(size));
+      @RequestParam(required = false, defaultValue = "false") boolean randomise) throws JsonProcessingException {
+    if (randomise){
+        List<DogResponse> dogResponses = dogSheltersService.getRandomDogs(size);
+        objectMapper.writeValueAsString(dogResponses);
+        return ResponseEntity.ok(dogResponses);
+    }
 
     var dogResponses =
         dogSheltersService.getAllDogs(
@@ -73,6 +84,7 @@ public class DogSheltersController {
             ageMax,
             sex,
             dogSize);
+    objectMapper.writeValueAsString(dogResponses);
     return ResponseEntity.ok(dogResponses);
   }
 }
