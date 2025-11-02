@@ -21,10 +21,9 @@ app.get('/api/dogs', async (req, res) => {
     }
     const dogs = await response.json();
 
-    const dataUris = await Promise.all(
-      dogs.map(async dog => {
+    const enriched = await Promise.all(
+      dogs.map(async (dog) => {
         const info = dog.dogInfo || {};
-        const externalId = info.externalId;
         const urls = info.imageUrls;
         if (!Array.isArray(urls) || urls.length === 0) {
           return null;
@@ -35,14 +34,28 @@ app.get('/api/dogs', async (req, res) => {
           const buffer = await imgRes.buffer();
           const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
           const base64 = buffer.toString('base64');
-          return `data:${contentType};base64,${base64}`;
+          const dataUri = `data:${contentType};base64,${base64}`;
+          return {
+            id: dog.internalId,
+            url: dataUri,
+            name: info.name,
+            description: info.description,
+            breedGuess: info.breedGuess,
+            sex: info.sex,
+            estimatedAgeInYears: info.estimatedAgeInYears,
+            currentWeight: info.currentWeight,
+            estimatedFinalWeightMin: info.estimatedFinalWeightMin,
+            estimatedFinalWeightMax: info.estimatedFinalWeightMax,
+            dogAddress: info.dogAddress,
+            shelterUrl: info.shelterUrl
+          };
         } catch (err) {
           return null;
         }
       })
     );
 
-    res.json(dataUris);
+    res.json(enriched.filter(Boolean));
 
   } catch (e) {
     res.status(500).json({ error: 'Internal server error' });
