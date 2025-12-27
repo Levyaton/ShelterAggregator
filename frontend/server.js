@@ -21,43 +21,43 @@ app.get('/api/dogs', async (req, res) => {
     }
     const dogs = await response.json();
 
-    const enriched = await Promise.all(
-      dogs.map(async (dog) => {
+    // Transform backend response to frontend format - pass through all image URLs
+    const enriched = dogs
+      .map((dog) => {
         const info = dog.dogInfo || {};
         const urls = info.imageUrls;
         if (!Array.isArray(urls) || urls.length === 0) {
           return null;
         }
-        const imgUrl = urls[0];
-        try {
-          const imgRes = await fetch(imgUrl);
-          const buffer = await imgRes.buffer();
-          const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
-          const base64 = buffer.toString('base64');
-          const dataUri = `data:${contentType};base64,${base64}`;
-          return {
-            id: dog.internalId,
-            url: dataUri,
-            name: info.name,
-            description: info.description,
-            breedGuess: info.breedGuess,
-            sex: info.sex,
-            estimatedAgeInYears: info.estimatedAgeInYears,
-            currentWeight: info.currentWeight,
-            estimatedFinalWeightMin: info.estimatedFinalWeightMin,
-            estimatedFinalWeightMax: info.estimatedFinalWeightMax,
-            dogAddress: info.dogAddress,
-            shelterUrl: info.shelterUrl
-          };
-        } catch (err) {
-          return null;
+        const imgUrl = urls[0]; // Use first image URL as primary
+        
+        // Log if we receive a data URI (shouldn't happen if backend returns real URLs)
+        if (imgUrl && imgUrl.startsWith('data:')) {
+          console.warn(`[Proxy] Received data URI from backend for dog ${dog.internalId}: ${imgUrl.substring(0, 100)}...`);
         }
+        
+        return {
+          id: dog.internalId,
+          url: imgUrl, // Primary image URL (first one)
+          imageUrls: urls, // All image URLs for carousel
+          name: info.name,
+          description: info.description,
+          breedGuess: info.breedGuess,
+          sex: info.sex,
+          estimatedAgeInYears: info.estimatedAgeInYears,
+          currentWeight: info.currentWeight,
+          estimatedFinalWeightMin: info.estimatedFinalWeightMin,
+          estimatedFinalWeightMax: info.estimatedFinalWeightMax,
+          dogAddress: info.dogAddress,
+          shelterUrl: info.shelterUrl
+        };
       })
-    );
+      .filter(Boolean);
 
-    res.json(enriched.filter(Boolean));
+    res.json(enriched);
 
   } catch (e) {
+    console.error('Error fetching dogs:', e);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
