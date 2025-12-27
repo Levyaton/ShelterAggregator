@@ -138,6 +138,19 @@ public class DogSheltersService {
         .orElseThrow(() -> new NoSuchElementException("Shelter not found with id: " + shelterId));
   }
 
+  public void reportUnavailableDogs(List<Long> dogIds) {
+    if (dogIds == null || dogIds.isEmpty()) {
+      return;
+    }
+    // Batch update for efficiency
+    dogIds.forEach(dogId -> {
+      dogRepository.findById(dogId).ifPresent(dog -> {
+        dog.setIsDogAvailable(false);
+        dogRepository.save(dog);
+      });
+    });
+  }
+
   static class RandomnessWeight {
     private static final double MIN_WEIGHT = 0.01;
     private static final double MAX_WEIGHT = 0.02;

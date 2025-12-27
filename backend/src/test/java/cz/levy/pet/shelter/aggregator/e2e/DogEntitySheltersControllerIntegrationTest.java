@@ -6,6 +6,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cz.levy.pet.shelter.aggregator.api.DogResponse;
+import cz.levy.pet.shelter.aggregator.api.ReportUnavailableDogsRequest;
 import cz.levy.pet.shelter.aggregator.config.TestContainerConfig;
 import cz.levy.pet.shelter.aggregator.entity.DogEntity;
 import cz.levy.pet.shelter.aggregator.entity.ShelterEntity;
@@ -199,6 +200,59 @@ public class DogEntitySheltersControllerIntegrationTest {
 
     performRequest(null, HttpStatus.OK, Method.GET, "/dogs")
         .assertThatResponseEqualsRecursive(expectedResponse);
+  }
+
+  @Test
+  public void reportUnavailableDogsMarksDogsAsUnavailable() {
+    var savedShelter = prepareSavedShelterEntity();
+    var savedDog1 = prepareSavedDogEntity(savedShelter);
+    var savedDog2 = prepareSavedDogEntity(
+        savedShelter,
+        DogEntityTestFixtureBuilder.builder()
+            .withExternalId("dog2")
+            .build()
+            .toDogEntity(savedShelter));
+
+    // Initially both dogs should be available
+    assertThat(dogRepository.findAll().size()).isEqualTo(2);
+
+    // Report dog1 as unavailable
+    var request = new ReportUnavailableDogsRequest(List.of(savedDog1.getId()));
+    performRequest(request, HttpStatus.NO_CONTENT, Method.POST, "/dogs/reportUnavailable");
+
+    // Verify dog1 is marked as unavailable in repository
+    var dog1 = dogRepository.findById(savedDog1.getId()).orElseThrow();
+    assertThat(dog1.getIsDogAvailable()).isFalse();
+
+    // Now only dog2 should be available in GET /dogs
+    var expectedResponse = List.of(
+        DogResponseTestFixtureBuilder.builder()
+            .withInternalId(savedDog2.getId())
+            .withDogRequest(
+                DogRequestTestFixtureBuilder.builder()
+                    .withExternalId("dog2")
+                    .build()
+                    .toDogRequest(savedShelter.getId()))
+            .build()
+            .toDogResponse());
+    performRequest(null, HttpStatus.OK, Method.GET, "/dogs")
+        .assertThatResponseEqualsRecursive(expectedResponse);
+
+    // Verify dog1 is not accessible via getOneDog
+    performRequest(null, HttpStatus.NOT_FOUND, Method.GET, "/dogs/" + savedDog1.getId());
+  }
+
+  @Test
+  public void reportUnavailableDogsHandlesInvalidIdsGracefully() {
+    var request = new ReportUnavailableDogsRequest(List.of(99999L, 99998L));
+    // Should not throw exception, just ignore invalid IDs
+    performRequest(request, HttpStatus.NO_CONTENT, Method.POST, "/dogs/reportUnavailable");
+  }
+
+  @Test
+  public void reportUnavailableDogsWithEmptyListDoesNothing() {
+    var request = new ReportUnavailableDogsRequest(List.of());
+    performRequest(request, HttpStatus.NO_CONTENT, Method.POST, "/dogs/reportUnavailable");
   }
 
   private ShelterEntity prepareSavedShelterEntity() {

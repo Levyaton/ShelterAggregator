@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cz.levy.pet.shelter.aggregator.api.DogRequest;
 import cz.levy.pet.shelter.aggregator.api.DogResponse;
+import cz.levy.pet.shelter.aggregator.api.ReportUnavailableDogsRequest;
 import cz.levy.pet.shelter.aggregator.domain.DogSize;
 import cz.levy.pet.shelter.aggregator.domain.Sex;
 import cz.levy.pet.shelter.aggregator.domain.SortField;
@@ -86,5 +87,11 @@ public class DogSheltersController {
             dogSize);
     objectMapper.writeValueAsString(dogResponses);
     return ResponseEntity.ok(dogResponses);
+  }
+
+  @PostMapping("/reportUnavailable")
+  public ResponseEntity<Void> reportUnavailableDogs(@Valid @RequestBody ReportUnavailableDogsRequest request) {
+    dogSheltersService.reportUnavailableDogs(request.dogIds());
+    return ResponseEntity.noContent().build();
   }
 }
