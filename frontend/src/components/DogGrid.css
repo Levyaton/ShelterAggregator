@@ -290,7 +290,7 @@
 .dog-overlay-content {
   position: relative;
   max-width: 100%;
-  max-height: 100%;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -298,6 +298,8 @@
   gap: 16px;
   /* Allow clicks in the dark area around content to pass through and close */
   pointer-events: none;
+  width: 100%;
+  overflow: hidden; /* Prevent content from overflowing viewport */
 }
 
 .overlay-title {
@@ -335,11 +337,11 @@
 
 .dog-overlay-image {
   display: block;
-  max-width: 100%;
-  /* Leave space for title and info box */
-  max-height: min(50dvh, calc(100dvh - 360px));
-  max-height: min(50svh, calc(100svh - 360px));
-  max-height: min(50vh, calc(100vh - 360px));
+  max-width: min(900px, 95vw);
+  /* Leave space for title (~60px), carousel (~120px), and info box (~200px) */
+  max-height: min(45dvh, calc(100dvh - 380px));
+  max-height: min(45svh, calc(100svh - 380px));
+  max-height: min(45vh, calc(100vh - 380px));
   width: auto;
   height: auto;
   object-fit: contain;
@@ -350,6 +352,7 @@
   background: #fffbe7;
   /* Re-enable interactions on the content itself */
   pointer-events: auto;
+  flex-shrink: 0; /* Don't shrink the image */
 }
 
 .dog-overlay-image.is-loading {
@@ -359,15 +362,75 @@
 }
 
 /* Image carousel/thumbnails */
+.dog-image-carousel-wrapper {
+  position: relative;
+  margin-top: 1rem;
+  padding: 0 2rem;
+  pointer-events: auto;
+  overflow: hidden; /* Hide overflow to limit visible images */
+  width: 100%;
+  max-width: min(900px, 95vw); /* Match the main image width */
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  justify-content: center;
+}
+
 .dog-image-carousel {
   display: flex;
   gap: 0.75rem;
-  justify-content: center;
-  flex-wrap: wrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  width: 632px; /* Fixed width: 7 thumbnails (80px) + 6 gaps (12px) = 560px + 72px = 632px */
   max-width: 100%;
-  margin-top: 1rem;
-  padding: 0 1rem;
-  pointer-events: auto;
+  padding: 0.5rem 0;
+  position: relative;
+}
+
+/* Center thumbnails when there are 7 or fewer images */
+.dog-image-carousel.centered-content {
+  justify-content: center;
+}
+
+.dog-image-carousel::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Edge fading gradients */
+.dog-image-carousel-wrapper::before,
+.dog-image-carousel-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3rem;
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity 0.3s ease;
+}
+
+.dog-image-carousel-wrapper::before {
+  left: 0;
+  background: linear-gradient(to right, rgba(125, 134, 144, 0.95) 0%, rgba(125, 134, 144, 0.7) 30%, transparent 100%);
+  opacity: 1;
+}
+
+.dog-image-carousel-wrapper::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(125, 134, 144, 0.95) 0%, rgba(125, 134, 144, 0.7) 30%, transparent 100%);
+  opacity: 1;
+}
+
+/* Hide gradients when at start/end */
+.dog-image-carousel-wrapper.at-start::before {
+  opacity: 0;
+}
+
+.dog-image-carousel-wrapper.at-end::after {
+  opacity: 0;
 }
 
 .dog-thumbnail {
@@ -382,6 +445,11 @@
   height: 80px;
   flex-shrink: 0;
   position: relative;
+  opacity: 0.7;
+}
+
+.dog-thumbnail.active {
+  opacity: 1;
 }
 
 .dog-thumbnail:hover {
@@ -431,12 +499,29 @@
   /* prevent scrolling; content is truncated instead */
   overflow: hidden;
   pointer-events: auto;
+  /* Reserve space: title (~60px) + image (~45vh) + carousel (~120px) + gaps (~50px) = ~230px + 45vh */
+  max-height: min(25dvh, calc(100dvh - 45vh - 230px));
+  max-height: min(25svh, calc(100svh - 45vh - 230px));
+  max-height: min(25vh, calc(100vh - 45vh - 230px));
+  /* Fallback for very small screens */
+  max-height: min(25vh, 200px);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0; /* Don't shrink the info box */
+}
+
+.dog-info-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Allow flex child to shrink */
+  overflow: hidden;
 }
 
 .dog-info-title {
   font-size: 1.3rem;
   font-weight: 800;
   margin-bottom: 6px;
+  flex-shrink: 0; /* Don't shrink title */
 }
 
 .dog-info-meta {

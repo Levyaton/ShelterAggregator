@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import './DogGrid.css';
 import LogoAdoptujMe from './LogoAdoptujMe.png';
@@ -62,6 +62,13 @@ const DogGrid = () => {
   });
   const [previewAnchor, setPreviewAnchor] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [loadStatus, setLoadStatus] = useState<Record<string, { loaded: boolean; attempts: number; failed: boolean; isPlaceholder: boolean; originalUrl?: string; lastError?: string; errorType?: string }>>({});
+  const [carouselScrollState, setCarouselScrollState] = useState<{ atStart: boolean; atEnd: boolean }>({
+    atStart: true,
+    atEnd: false
+  });
+  const [fontScale, setFontScale] = useState(1.0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const infoBoxRef = useRef<HTMLDivElement>(null);
 
   const sanitizeMeta = (text?: string): string => {
     if (!text) return '';
@@ -349,6 +356,124 @@ const DogGrid = () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [overlay.isVisible, overlay.dog, overlay.selectedImageIndex]);
+
+  // Auto-scroll carousel to keep selected thumbnail visible
+  useEffect(() => {
+    if (!overlay.isVisible || !overlay.dog || !carouselRef.current) {
+      return;
+    }
+
+    const carousel = carouselRef.current;
+    const allImageUrls = overlay.dog.imageUrls || [overlay.dog.url];
+    if (allImageUrls.length <= 1) return;
+
+    // Small delay to ensure DOM is updated
+    const timeoutId = setTimeout(() => {
+      const selectedThumbnail = carousel.querySelector(`.dog-thumbnail:nth-child(${overlay.selectedImageIndex + 1})`) as HTMLElement;
+      if (!selectedThumbnail) return;
+
+      const thumbLeft = selectedThumbnail.offsetLeft;
+      const thumbWidth = selectedThumbnail.offsetWidth;
+      const containerWidth = carousel.clientWidth;
+      
+      // Calculate scroll position to center the selected thumbnail
+      // Center = containerWidth / 2, so we want the thumbnail's center at that point
+      const thumbnailCenter = thumbLeft + (thumbWidth / 2);
+      const targetScroll = thumbnailCenter - (containerWidth / 2);
+      
+      // Clamp to valid scroll range
+      const maxScroll = carousel.scrollWidth - containerWidth;
+      const finalScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+      
+      carousel.scrollTo({
+        left: finalScroll,
+        behavior: 'smooth'
+      });
+    }, 50);
+
+    return () => clearTimeout(timeoutId);
+  }, [overlay.isVisible, overlay.dog, overlay.selectedImageIndex]);
+
+  // Update scroll state on scroll events
+  useEffect(() => {
+    if (!overlay.isVisible || !overlay.dog || !carouselRef.current) {
+      setCarouselScrollState({ atStart: true, atEnd: false });
+      return;
+    }
+
+    const carousel = carouselRef.current;
+    const updateScrollState = () => {
+      const atStart = carousel.scrollLeft <= 5;
+      const atEnd = carousel.scrollLeft >= carousel.scrollWidth - carousel.clientWidth - 5;
+      setCarouselScrollState({ atStart, atEnd });
+    };
+
+    updateScrollState();
+    carousel.addEventListener('scroll', updateScrollState);
+    return () => {
+      carousel.removeEventListener('scroll', updateScrollState);
+    };
+  }, [overlay.isVisible, overlay.dog]);
+
+  // Calculate dynamic font size to prevent text overflow
+  useEffect(() => {
+    if (!overlay.isVisible || !infoBoxRef.current) {
+      setFontScale(1); // Reset font scale when overlay is not visible
+      return;
+    }
+
+    const infoBox = infoBoxRef.current;
+    const contentDiv = infoBox.querySelector('.dog-info-content') as HTMLElement;
+    if (!contentDiv) {
+      return;
+    }
+
+    let timeoutId: NodeJS.Timeout | null = null;
+    let lastScale = 1;
+
+    const calculateFontScale = () => {
+      // Get available height from the info box (which has max-height constraint)
+      const availableHeight = infoBox.clientHeight;
+      const contentHeight = contentDiv.scrollHeight;
+      let newScale = 1;
+      const minScale = 0.6;
+
+      if (contentHeight > availableHeight && availableHeight > 0) {
+        // Add a small buffer to prevent edge cases
+        newScale = Math.max(minScale, (availableHeight * 0.95) / contentHeight);
+      }
+
+      // Only update if the scale changed significantly (prevent constant updates)
+      if (Math.abs(newScale - lastScale) > 0.01) {
+        setFontScale(newScale);
+        lastScale = newScale;
+      }
+    };
+
+    // Debounced calculation function
+    const debouncedCalculate = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = setTimeout(calculateFontScale, 50);
+    };
+
+    // Initial calculation after a short delay to ensure DOM is ready
+    const initialTimeout = setTimeout(calculateFontScale, 100);
+
+    // Recalculate on resize (debounced)
+    const resizeObserver = new ResizeObserver(debouncedCalculate);
+    resizeObserver.observe(infoBox);
+    resizeObserver.observe(contentDiv);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      resizeObserver.disconnect();
+    };
+  }, [overlay.isVisible, overlay.dog]); // Removed carouselScrollState to prevent constant recalculation
 
   // Handle navigation to previous dog
   const handlePreviousDog = (): void => {
@@ -687,31 +812,39 @@ const DogGrid = () => {
                   />
                   {/* Image carousel/thumbnails */}
                   {allImageUrls.length > 1 && (
-                    <div className="dog-image-carousel">
-                      {allImageUrls.map((url, index) => (
-                        <button
-                          key={index}
-                          className={`dog-thumbnail ${overlay.selectedImageIndex === index ? 'active' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleThumbnailClick(index);
-                          }}
-                          aria-label={`View image ${index + 1} of ${allImageUrls.length}`}
-                        >
-                          <img
-                            src={url}
-                            alt={`${overlay.dog!.name || 'Dog'} - Image ${index + 1}`}
-                            onError={(e) => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER_IMAGE; }}
-                          />
-                        </button>
-                      ))}
+                    <div 
+                      className={`dog-image-carousel-wrapper ${carouselScrollState.atStart ? 'at-start' : ''} ${carouselScrollState.atEnd ? 'at-end' : ''} ${allImageUrls.length <= 7 ? 'centered' : ''}`}
+                    >
+                      <div 
+                        className={`dog-image-carousel ${allImageUrls.length <= 7 ? 'centered-content' : ''}`}
+                        ref={carouselRef}
+                      >
+                        {allImageUrls.map((url, index) => (
+                          <button
+                            key={index}
+                            className={`dog-thumbnail ${overlay.selectedImageIndex === index ? 'active' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleThumbnailClick(index);
+                            }}
+                            aria-label={`View image ${index + 1} of ${allImageUrls.length}`}
+                          >
+                            <img
+                              src={url}
+                              alt={`${overlay.dog!.name || 'Dog'} - Image ${index + 1}`}
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER_IMAGE; }}
+                            />
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </>
               );
             })()}
-            <div className="dog-info-box">
-              <div className="dog-info-title">{overlay.dog.name || 'Neznámé jméno'}</div>
+            <div className="dog-info-box" ref={infoBoxRef} style={{ fontSize: `${fontScale}em` }}>
+              <div className="dog-info-content">
+                <div className="dog-info-title">{overlay.dog.name || 'Neznámé jméno'}</div>
               <div className="dog-info-meta">
                 {sanitizeMeta(overlay.dog.breedGuess) && <span>{sanitizeMeta(overlay.dog.breedGuess)}</span>}
                 {overlay.dog.sex && (
@@ -772,6 +905,7 @@ const DogGrid = () => {
                     );
                   }
                 })()}
+              </div>
               </div>
             </div>
           </div>
