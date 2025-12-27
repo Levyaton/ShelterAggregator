@@ -22,3 +22,8 @@ spring:
     static-path-pattern: "/**"
   resources:
     static-locations: classpath:/static/,file:../frontend/build/
+
+dog:
+  report:
+    api:
+      key: test-api-key

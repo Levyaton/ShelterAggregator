@@ -18,8 +18,22 @@ public class ResponseExtensions {
 
   public static <T> ValidatableMockMvcResponse performRequest(
       T requestBody, HttpStatus expectedStatus, Method method, String url, Object... pathParams) {
+    return performRequest(requestBody, expectedStatus, method, url, null, pathParams);
+  }
+
+  public static <T> ValidatableMockMvcResponse performRequest(
+      T requestBody,
+      HttpStatus expectedStatus,
+      Method method,
+      String url,
+      java.util.Map<String, String> headers,
+      Object... pathParams) {
 
     var requestSpec = given().contentType(MediaType.APPLICATION_JSON_VALUE);
+
+    if (headers != null) {
+      headers.forEach(requestSpec::header);
+    }
 
     if (requestBody != null) {
       requestSpec = requestSpec.body(requestBody);

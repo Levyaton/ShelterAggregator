@@ -218,7 +218,8 @@ public class DogEntitySheltersControllerIntegrationTest {
 
     // Report dog1 as unavailable
     var request = new ReportUnavailableDogsRequest(List.of(savedDog1.getId()));
-    performRequest(request, HttpStatus.NO_CONTENT, Method.POST, "/dogs/reportUnavailable");
+    var headers = getTestApiKeyHeaders();
+    performRequest(request, HttpStatus.NO_CONTENT, Method.POST, "/dogs/reportUnavailable", headers);
 
     // Verify dog1 is marked as unavailable in repository
     var dog1 = dogRepository.findById(savedDog1.getId()).orElseThrow();
@@ -246,13 +247,59 @@ public class DogEntitySheltersControllerIntegrationTest {
   public void reportUnavailableDogsHandlesInvalidIdsGracefully() {
     var request = new ReportUnavailableDogsRequest(List.of(99999L, 99998L));
     // Should not throw exception, just ignore invalid IDs
-    performRequest(request, HttpStatus.NO_CONTENT, Method.POST, "/dogs/reportUnavailable");
+    // Note: This test will need API key once security is enabled
+    var headers = getTestApiKeyHeaders();
+    performRequest(request, HttpStatus.NO_CONTENT, Method.POST, "/dogs/reportUnavailable", headers);
   }
 
   @Test
   public void reportUnavailableDogsWithEmptyListDoesNothing() {
     var request = new ReportUnavailableDogsRequest(List.of());
-    performRequest(request, HttpStatus.NO_CONTENT, Method.POST, "/dogs/reportUnavailable");
+    var headers = getTestApiKeyHeaders();
+    performRequest(request, HttpStatus.NO_CONTENT, Method.POST, "/dogs/reportUnavailable", headers);
+  }
+
+  @Test
+  public void reportUnavailableDogsRequiresApiKey() {
+    var savedShelter = prepareSavedShelterEntity();
+    var savedDog = prepareSavedDogEntity(savedShelter);
+    var request = new ReportUnavailableDogsRequest(List.of(savedDog.getId()));
+
+    // Without API key, should be unauthorized
+    performRequest(request, HttpStatus.UNAUTHORIZED, Method.POST, "/dogs/reportUnavailable");
+  }
+
+  @Test
+  public void reportUnavailableDogsWithValidApiKeySucceeds() {
+    var savedShelter = prepareSavedShelterEntity();
+    var savedDog = prepareSavedDogEntity(savedShelter);
+    var request = new ReportUnavailableDogsRequest(List.of(savedDog.getId()));
+
+    // With valid API key in header, should succeed
+    var headers = getTestApiKeyHeaders();
+    performRequest(request, HttpStatus.NO_CONTENT, Method.POST, "/dogs/reportUnavailable", headers);
+  }
+
+  @Test
+  public void reportUnavailableDogsWithInvalidApiKeyFails() {
+    var savedShelter = prepareSavedShelterEntity();
+    var savedDog = prepareSavedDogEntity(savedShelter);
+    var request = new ReportUnavailableDogsRequest(List.of(savedDog.getId()));
+
+    // With invalid API key, should be unauthorized
+    var headers = java.util.Map.of("X-API-Key", "wrong-key");
+    performRequest(request, HttpStatus.UNAUTHORIZED, Method.POST, "/dogs/reportUnavailable", headers);
+  }
+
+  @Test
+  public void otherEndpointsRemainPubliclyAccessible() {
+    // Verify that other endpoints don't require API key
+    performRequest(null, HttpStatus.OK, Method.GET, "/dogs");
+  }
+
+  private java.util.Map<String, String> getTestApiKeyHeaders() {
+    // Use test API key - in real tests, this would come from test configuration
+    return java.util.Map.of("X-API-Key", "test-api-key");
   }
 
   private ShelterEntity prepareSavedShelterEntity() {

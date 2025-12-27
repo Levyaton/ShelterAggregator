@@ -12,3 +12,8 @@ spring:
     locations: classpath:db/migration
   application:
     name: pet.shelter.aggregator
+
+dog:
+  report:
+    api:
+      key: ${DOG_REPORT_API_KEY:}
