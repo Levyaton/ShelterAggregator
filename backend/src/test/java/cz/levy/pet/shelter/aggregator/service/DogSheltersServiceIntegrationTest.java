@@ -196,6 +196,43 @@ public class DogSheltersServiceIntegrationTest {
             .build());
   }
 
+  @org.junit.jupiter.api.Test
+  void unavailableDogsAreFilteredFromResults() {
+    // Mark one dog as unavailable
+    var allDogs = dogRepository.findAll();
+    var unavailableDog = allDogs.get(0);
+    var unavailableDogId = unavailableDog.getId();
+    unavailableDog.setIsDogAvailable(false);
+    dogRepository.save(unavailableDog);
+
+    // Get all dogs - should not include the unavailable one
+    var result = dogSheltersService.getAllDogs(
+        PageRequest.of(0, 100, Sort.by(Sort.Direction.ASC, "id")),
+        null, null, null, null);
+
+    // Verify unavailable dog is not in results
+    var resultIds = result.stream()
+        .map(r -> r.internalId())
+        .toList();
+
+    org.assertj.core.api.Assertions.assertThat(resultIds)
+        .doesNotContain(unavailableDogId);
+
+    // Verify getRandomDogs also filters unavailable dogs
+    var randomDogs = dogSheltersService.getRandomDogs(100);
+    var randomDogIds = randomDogs.stream()
+        .map(r -> r.internalId())
+        .toList();
+
+    org.assertj.core.api.Assertions.assertThat(randomDogIds)
+        .doesNotContain(unavailableDogId);
+
+    // Verify getDogDto throws exception for unavailable dog
+    org.junit.jupiter.api.Assertions.assertThrows(
+        java.util.NoSuchElementException.class,
+        () -> dogSheltersService.getDogDto(unavailableDogId));
+  }
+
   @Data
   @Builder
   public static class FilterPaginationTestCase {

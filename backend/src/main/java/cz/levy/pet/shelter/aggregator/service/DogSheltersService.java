@@ -60,6 +60,10 @@ public class DogSheltersService {
 
   public DogDto getDogDto(long internalId) {
     DogEntity dogEntity = getDogByInternalId(internalId);
+    // Check if dog is available
+    if (dogEntity.getIsDogAvailable() == null || !dogEntity.getIsDogAvailable()) {
+      throw new NoSuchElementException("Dog not found with id: " + internalId);
+    }
     return DogMapper.entityToDto(dogEntity);
   }
 
@@ -77,7 +81,9 @@ public class DogSheltersService {
   }
 
   public List<DogResponse> getRandomDogs(int listSize) {
-    var randomDogs = RandomnessWeight.getRandomWeightedSelection(dogRepository.findAll(), listSize);
+    // Filter by availability before random selection
+    var availableDogs = dogRepository.findAll(DogSpec.isAvailable());
+    var randomDogs = RandomnessWeight.getRandomWeightedSelection(availableDogs, listSize);
     return dogEntitiesToResponses(randomDogs);
   }
 
@@ -94,7 +100,7 @@ public class DogSheltersService {
   private Specification<DogEntity> buildDogSpecification(
       Float ageMin, Float ageMax, Sex sex, DogSize size) {
 
-    Specification<DogEntity> spec = (_, _, cb) -> cb.conjunction();
+    Specification<DogEntity> spec = DogSpec.isAvailable(); // Always filter by availability
     if (ageMin != null) {
       spec = spec.and(DogSpec.ageGte(ageMin));
     }

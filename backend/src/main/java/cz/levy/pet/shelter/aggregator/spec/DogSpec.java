@@ -49,4 +49,8 @@ public class DogSpec {
                   cb.gt(root.get("estimatedFinalWeightMin"), LARGE.getFrom()));
     };
   }
+
+  public static Specification<DogEntity> isAvailable() {
+    return (root, query, cb) -> cb.equal(root.get("isDogAvailable"), true);
+  }
 }

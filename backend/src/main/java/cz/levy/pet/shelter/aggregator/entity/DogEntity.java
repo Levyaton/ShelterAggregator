@@ -53,4 +53,8 @@ public class DogEntity {
   @CollectionTable(name = "dog_image_urls", joinColumns = @JoinColumn(name = "dog_id"))
   @Column(name = "image_url", length = 2048)
   private List<String> imageUrls = new ArrayList<>();
+
+  @Column(nullable = false)
+  @Builder.Default
+  private Boolean isDogAvailable = true;
 }
